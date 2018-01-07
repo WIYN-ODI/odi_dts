@@ -9,6 +9,9 @@ import argparse
 import dts
 import query_db
 
+def get_obsid_from_directory(dirname):
+    return None
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -20,19 +23,27 @@ if __name__ == "__main__":
 
     parser.add_argument('--db', default=False, action='store_true',
                         help="query ODI database")
+    parser.add_argument('--nthreads', default=1, type=int,
+                        help="number of threads for parallel transfer")
 
     args = parser.parse_args()
 
-    if (args.db):
-        pass
-        odidb = query_db.ODIDB()
-        exposures = odidb.query_exposures_for_transfer()
-        input_dirs = [dir for (id,exp,dir) in exposures]
-    else:
-        input_dirs = args.inputdir
+    odidb = query_db.ODIDB()
 
-    for dir in input_dirs:
-        print(dir)
+    if (args.db):
+        exposures = odidb.query_exposures_for_transfer()
+        input_dirs = [(dir, obsid) for (id,obsid,dir) in exposures]
+    else:
+        input_dirs = []
+        for dir in args.inputdir:
+            obsid = get_obsid_from_directory(dir)
+            input_dirs.append((dir,obsid))
+        # input_dirs = args.inputdir
+
+    for (dir, obsid) in input_dirs:
+        print(dir, obsid)
+        odidb.mark_exposure_archived(obsid)
+        break
 
     print(len(input_dirs))
         #transfer = dts.DTS(dir)
