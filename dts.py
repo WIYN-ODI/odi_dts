@@ -3,6 +3,7 @@ import os
 import subprocess
 import glob
 import hashlib
+import pyfits
 
 
 class DTS ( object ):
@@ -10,6 +11,7 @@ class DTS ( object ):
 
     def __init__(self,
                  exposure_directory,
+                 obsid=None,
                  scratch_dir=None,
                  transfer_protocol='rsync',
                  auto_start=True):
@@ -25,6 +27,8 @@ class DTS ( object ):
         _, self.dir_name = os.path.split(exposure_directory)
         print(self.dir_name)
 
+        self.get_filelist()
+
         self.tar_directory = os.path.join(self.scratch_dir, self.dir_name)
         if (not os.path.isdir(self.tar_directory)):
             print("Creating tar-directory: %s" % (self.tar_directory))
@@ -35,25 +39,44 @@ class DTS ( object ):
         self.transfer_protocol = transfer_protocol
         self.remote_target_directory = "galev.org:/sas/misc"
         self.tar_checksum = None
+        self.obsid = obsid
+        if (self.obsid is None):
+            self.update_obsid_from_files()
 
         if (auto_start):
             self.archive()
+
+    def update_obsid_from_files(self):
+
+        # open each of the files and search for the OBSID keyword
+        print("Updating OBSID from data")
+        for fn in self.filelist:
+            with pyfits.open(fn) as hdulist:
+                hdulist.info()
+                for ext in hdulist:
+                    if ('OBSID' in ext.header):
+                        self.obsid = ext.header['OBSID']
+                        print("FOUND OBSID: %s" % (self.obsid))
+                        return
+        return
 
     def archive(self):
         self.make_tar()
         self.transfer_to_archive()
         self.register_transfer_complete()
 
-    def make_tar(self):
-        print("Making tar ball")
-
+    def get_filelist(self):
         # Check all files in the directory - we need to collect all FITS files
         wildcards = os.path.join(self.exposure_directory, "*.fits")
         fits_files = glob.glob(wildcards)
         print("\n".join(fits_files))
+        self.filelist = fits_files
+
+    def make_tar(self):
+        print("Making tar ball")
 
         # run fpack to enable compression on all image files
-        for filename in fits_files:
+        for filename in self.filelist: #fits_files:
             self.fpack(filename)
 
         # Now create the actual tar ball
@@ -90,7 +113,7 @@ class DTS ( object ):
         #self.execute(cmd)
         pass
 
-    def register_transfer_complete(self):
+    def register_transfer_complete(self, db):
         print("Marking as complete")
         pass
 
