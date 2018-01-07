@@ -1,0 +1,5 @@
+cx_Oracle==6.1
+os
+sys
+argparse
+subprocess
