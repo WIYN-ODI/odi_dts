@@ -3,6 +3,7 @@
 import os
 import sys
 import cx_Oracle
+import datetime
 
 from pprint import pprint
 
@@ -32,7 +33,8 @@ class ODIDB(object):
     (
     SELECT  expid
     FROM    EXPOSURE_EVENT
-    WHERE event like '%:: 0%'
+    WHERE event like '%:: 0%' OR 
+          event like 'ppa ingested OK%'
     )
     """
 
@@ -40,6 +42,52 @@ class ODIDB(object):
         results = self.cursor.fetchall()
         # pprint(results)
         return results
+
+    def mark_exposure_archived(self, obsid):
+
+        # convert obsid into expid
+        sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE='%s'" % (obsid)
+        print(sql)
+        self.cursor.execute(sql)
+        results = self.cursor.fetchall()
+        exposure_id = results[0][0]
+        print("EXPOSURE_ID=",results, exposure_id)
+
+        # start a sequence to auto-increment the ID value
+        # try:
+        #     self.cursor.execute("CREATE SEQUENCE SEQ_EVENTID INCREMENT BY 1")
+        # except cx_Oracle.DatabaseError as e:
+        #     # most likely this means ORA-00955: name is already used by an existing object
+        #     # so we can safely ignore this
+        #     pass
+        # self.cursor.execute("SELECT SEQ_EVENTID.nextval FROM EXPOSURE_EVENT")
+        # print("SEQUENCE.nextval=",self.cursor.fetchone())
+
+        # self.cursor.execute("SELECT MAX(ID) FROM EXPOSURE_EVENT")
+        # print("MAX(ID)=",self.cursor.fetchall())
+
+        # get time-stamp
+        event_time = datetime.datetime.now()
+        print(event_time)
+
+        # now mark it as complete
+        event = "test new DTS transfer complete :: -1"
+        # sql = "INSERT INTO EXPOSURE_EVENT (EXPID, EVENT) VALUES (:1, :2)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENT) VALUES (SEQ_EVENTID.next_val, :1, :2)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :1, :2, :3)"
+        sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :expid, :eventtime, :event)"
+
+        values = {'expid': exposure_id, 'eventtime':event_time, 'event':event}
+        print(sql)
+        print(values)
+        # self.cursor.execute(sql, values)
+        self.cursor.prepare(sql)
+        self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
+        self.cursor.execute(None, values)
+        self.connection.commit()
+
+        return
+
 
     def __del__(self):
         self.cursor.close()
@@ -53,3 +101,6 @@ if __name__ == "__main__":
 
     exposures = db.query_exposures_for_transfer()
     print("Found %d exposures to be transferred" % (len(exposures)))
+    for e in exposures: #((id,exposure,path) in exposures):
+        (id,exposure,path) = e
+        print("%6d %25s   %s" % (id,exposure,path))
