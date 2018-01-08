@@ -54,7 +54,7 @@ class DTS ( object ):
         print("Updating OBSID from data")
         for fn in self.filelist:
             with pyfits.open(fn) as hdulist:
-                hdulist.info()
+                # hdulist.info()
                 for ext in hdulist:
                     if ('OBSID' in ext.header):
                         self.obsid = ext.header['OBSID']
@@ -71,11 +71,11 @@ class DTS ( object ):
         # Check all files in the directory - we need to collect all FITS files
         wildcards = os.path.join(self.exposure_directory, "*.fits")
         fits_files = glob.glob(wildcards)
-        print("\n".join(fits_files))
+        # print("\n".join(fits_files))
         self.filelist = fits_files
 
     def make_tar(self):
-        print("Making tar ball")
+        # print("Making tar ball")
 
         # run fpack to enable compression on all image files
         for filename in self.filelist: #fits_files:
@@ -84,14 +84,14 @@ class DTS ( object ):
         # Now create the actual tar ball
         tar_cmd = "tar --create --seek --file=%s --directory=%s %s" % (
             self.tar_filename, self.scratch_dir, self.dir_name)
-        print(tar_cmd)
+        # print(tar_cmd)
         self.execute(tar_cmd)
         #--remove-files
 
         self.tar_checksum = self.calculate_checksum(self.tar_filename)
         self.tar_filesize = os.path.getsize(self.tar_filename)
 
-        print(self.tar_checksum)
+        # print(self.tar_checksum)
 
         pass
 
@@ -99,7 +99,7 @@ class DTS ( object ):
         _, basename = os.path.split(filename)
         fz_filename = basename+".fz"
         cmd = "fpack -S %s > %s" % (filename, os.path.join(self.tar_directory, fz_filename))
-        print(cmd)
+        # print(cmd)
         self.execute(cmd)
         return
 
@@ -112,7 +112,7 @@ class DTS ( object ):
         else:
             raise ValueError("Could not identfy which transfer protocal to use")
 
-        print("Copying to archive")
+        # print("Copying to archive")
         print(cmd)
         start_time = time.time()
         self.execute(cmd)
@@ -122,7 +122,7 @@ class DTS ( object ):
         pass
 
     def register_transfer_complete(self):
-        print("Marking as complete")
+        # print("Marking as complete")
         event = "pyDTS: fpack(%d) - tar(%.1fMB, MD5=%s) - transfer(%.1fs @ %.2fMB/s) - ingest: OK :: -1" % (
             len(self.filelist), self.tar_filesize/2**20, self.tar_checksum,
             self.tar_transfer_time, self.tar_filesize/2**20/self.tar_transfer_time
