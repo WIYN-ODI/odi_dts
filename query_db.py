@@ -14,6 +14,7 @@ class ODIDB(object):
 
     def __init__(self):
 
+        print("Establishing connection to database")
         dsn = cx_Oracle.makedsn(host='odiserv.kpno.noao.edu',
                                 port=1521, sid='odiprod')
         # print(dsn)
@@ -25,6 +26,8 @@ class ODIDB(object):
         self.cursor = self.connection.cursor()
 
         self.lock = threading.Lock()
+
+
 
     def query_exposures_for_transfer(self):
 
@@ -41,6 +44,7 @@ class ODIDB(object):
     WHERE event like '%:: 0%' OR 
           event like 'ppa ingested OK%'
     )
+    ORDER BY exp.id DESC
     """
 
         self.cursor.execute(sql)
@@ -54,14 +58,14 @@ class ODIDB(object):
     def mark_exposure_archived(self, obsid, event=None):
 
         self.lock.acquire(blocking=True)
-
+        print("Adding completeion report to EXPOSURE_EVENT table")
         # convert obsid into expid
         sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE LIKE '%%%s'" % (obsid)
-        print(sql)
+        # print(sql)
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
         exposure_id = results[0][0]
-        print("EXPOSURE_ID=",results, exposure_id)
+        # print("EXPOSURE_ID=",results, exposure_id)
 
         # start a sequence to auto-increment the ID value
         # try:
@@ -78,7 +82,7 @@ class ODIDB(object):
 
         # get time-stamp
         event_time = datetime.datetime.now()
-        print(event_time)
+        # print(event_time)
 
 
         # now mark it as complete
@@ -90,8 +94,8 @@ class ODIDB(object):
         sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :expid, :eventtime, :event)"
 
         values = {'expid': exposure_id, 'eventtime':event_time, 'event':event}
-        print(sql)
-        print(values)
+        # print(sql)
+        # print(values)
         # self.cursor.execute(sql, values)
         self.cursor.prepare(sql)
         self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
