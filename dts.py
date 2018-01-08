@@ -4,7 +4,7 @@ import subprocess
 import glob
 import hashlib
 import pyfits
-
+import time
 
 class DTS ( object ):
 
@@ -12,6 +12,7 @@ class DTS ( object ):
     def __init__(self,
                  exposure_directory,
                  obsid=None,
+                 database=None,
                  scratch_dir=None,
                  transfer_protocol='rsync',
                  auto_start=True):
@@ -43,6 +44,7 @@ class DTS ( object ):
         if (self.obsid is None):
             self.update_obsid_from_files()
 
+        self.database = database
         if (auto_start):
             self.archive()
 
@@ -87,6 +89,8 @@ class DTS ( object ):
         #--remove-files
 
         self.tar_checksum = self.calculate_checksum(self.tar_filename)
+        self.tar_filesize = os.path.getsize(self.tar_filename)
+
         print(self.tar_checksum)
 
         pass
@@ -110,11 +114,20 @@ class DTS ( object ):
 
         print("Copying to archive")
         print(cmd)
-        #self.execute(cmd)
+        start_time = time.time()
+        self.execute(cmd)
+        end_time = time.time()
+        self.tar_transfer_time = end_time - start_time
+
         pass
 
-    def register_transfer_complete(self, db):
+    def register_transfer_complete(self):
         print("Marking as complete")
+        event = "pyDTS: fpack(%d) - tar(%.1fMB, MD5=%s) - transfer(%.1fs @ %.2fMB/s) - ingest: OK :: -1" % (
+            len(self.filelist), self.tar_filesize/2**20, self.tar_checksum,
+            self.tar_transfer_time, self.tar_filesize/2**20/self.tar_transfer_time
+        )
+        self.database.mark_exposure_archived(self.obsid, event=event)
         pass
 
     def execute(self, cmd):
