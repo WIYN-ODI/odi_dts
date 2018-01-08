@@ -5,6 +5,7 @@ import glob
 import hashlib
 import pyfits
 import time
+import config
 
 class DTS ( object ):
 
@@ -15,7 +16,8 @@ class DTS ( object ):
                  database=None,
                  scratch_dir=None,
                  transfer_protocol='rsync',
-                 auto_start=True):
+                 auto_start=True,
+                 remote_target=None):
 
         if (not os.path.isdir(exposure_directory)):
             raise ValueError("Input needs to be an existing directory")
@@ -38,7 +40,12 @@ class DTS ( object ):
         self.tar_filename = os.path.join(self.scratch_dir, self.dir_name)+".tar"
 
         self.transfer_protocol = transfer_protocol
-        self.remote_target_directory = "galev.org:/sas/misc"
+
+        if (remote_target is None):
+            self.remote_target_directory = "%s:%s" % (config.remote_server, config.remote_directory)
+        else:
+            self.remote_target_directory = remote_target
+
         self.tar_checksum = None
         self.obsid = obsid
         if (self.obsid is None):
