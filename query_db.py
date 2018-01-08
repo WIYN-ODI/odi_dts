@@ -4,6 +4,7 @@ import os
 import sys
 import cx_Oracle
 import datetime
+import threading
 
 from pprint import pprint
 
@@ -23,7 +24,11 @@ class ODIDB(object):
 
         self.cursor = self.connection.cursor()
 
+        self.lock = threading.Lock()
+
     def query_exposures_for_transfer(self):
+
+        self.lock.acquire(blocking=True)
 
         # select all exposures that have not been marked as complete (return code=0) yet
         sql = """\
@@ -41,12 +46,17 @@ class ODIDB(object):
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
         # pprint(results)
+
+        self.lock.release()
+
         return results
 
-    def mark_exposure_archived(self, obsid):
+    def mark_exposure_archived(self, obsid, event=None):
+
+        self.lock.acquire(blocking=True)
 
         # convert obsid into expid
-        sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE='%s'" % (obsid)
+        sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE LIKE '%%%s'" % (obsid)
         print(sql)
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
@@ -70,8 +80,10 @@ class ODIDB(object):
         event_time = datetime.datetime.now()
         print(event_time)
 
+
         # now mark it as complete
-        event = "test new DTS transfer complete :: -1"
+        if (event is None):
+            event = "test new DTS transfer complete :: -1"
         # sql = "INSERT INTO EXPOSURE_EVENT (EXPID, EVENT) VALUES (:1, :2)"
         # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENT) VALUES (SEQ_EVENTID.next_val, :1, :2)"
         # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :1, :2, :3)"
@@ -85,6 +97,8 @@ class ODIDB(object):
         self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
         self.cursor.execute(None, values)
         self.connection.commit()
+
+        self.lock.release()
 
         return
 
