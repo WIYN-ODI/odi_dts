@@ -174,7 +174,7 @@ class DTS ( object ):
 
     def register_transfer_complete(self):
         # print("Marking as complete")
-        event = "pyDTS %s: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - ingest(%s): OK :: -1" % (
+        event = "pyDTS %s: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - upload(%s): OK :: 0" % (
             self.obsid,
             len(self.filelist), self.tar_filesize/2**20, self.tar_checksum,
             self.tar_transfer_time, self.tar_filesize/2**20/self.tar_transfer_time,
