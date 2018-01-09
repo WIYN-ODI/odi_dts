@@ -31,7 +31,7 @@ class ODIDB(object):
 
     def query_exposures_for_transfer(self):
 
-        self.lock.acquire(blocking=True)
+        self.lock.acquire() #blocking=True
 
         # select all exposures that have not been marked as complete (return code=0) yet
         sql = """\
@@ -57,8 +57,8 @@ class ODIDB(object):
 
     def mark_exposure_archived(self, obsid, event=None):
 
-        self.lock.acquire(blocking=True)
-        print("Adding completeion report to EXPOSURE_EVENT table")
+        self.lock.acquire() #blocking=True)
+        print("Adding completion report to EXPOSURE_EVENT table")
         # convert obsid into expid
         sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE LIKE '%%%s'" % (obsid)
         # print(sql)
