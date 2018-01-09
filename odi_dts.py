@@ -15,11 +15,12 @@ import query_db
 
 class DTS_Thread(threading.Thread):
     """Threaded Url Grab"""
-    def __init__(self, queue, out_queue=None, database=None):
+    def __init__(self, queue, out_queue=None, database=None, delete_when_done=True):
         threading.Thread.__init__(self)
         self.queue = queue
         self.out_queue = out_queue
         self.database = database
+        self.delete_when_done = delete_when_done
 
     def run(self):
         while(True):
@@ -32,7 +33,8 @@ class DTS_Thread(threading.Thread):
                 break
 
             (dir, obsid) = exposure_info
-            exposure2archive = dts.DTS(dir, obsid=obsid, database=self.database)
+            exposure2archive = dts.DTS(dir, obsid=obsid, database=self.database,
+                                       cleanup=self.delete_when_done)
 
             #signals to queue job is done
             self.queue.task_done()
@@ -55,8 +57,11 @@ if __name__ == "__main__":
                         help="keep monitoring the database")
     parser.add_argument("--chunksize", default=25, type=int,
                         help="number of frames to transfer between DB queries (only in monitoring mode)")
-
+    parser.add_argument("--keep", dest="delete_when_done", default=True, action='store_false',
+                        help="")
     args = parser.parse_args()
+
+
     odidb = query_db.ODIDB()
     dts_queue = queue.Queue()
     first_run = True
@@ -100,7 +105,8 @@ if __name__ == "__main__":
             threads = []
             threads_needed = args.nthreads if args.nthreads < len(input_dirs) else len(input_dirs)
             for i in range(threads_needed):
-                t = DTS_Thread(queue=dts_queue, database=odidb)
+                t = DTS_Thread(queue=dts_queue, database=odidb,
+                               delete_when_done=args.delete_when_done)
                 t.setDaemon(True)
                 t.start()
                 threads.append(t)
