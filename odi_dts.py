@@ -98,7 +98,8 @@ if __name__ == "__main__":
             #     print(task)
 
             threads = []
-            for i in range(args.nthreads):
+            threads_needed = args.nthreads if args.nthreads < len(input_dirs) else len(input_dirs)
+            for i in range(threads_needed):
                 t = DTS_Thread(queue=dts_queue, database=odidb)
                 t.setDaemon(True)
                 t.start()
