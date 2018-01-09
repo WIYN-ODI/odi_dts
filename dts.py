@@ -19,7 +19,8 @@ class DTS ( object ):
                  scratch_dir=None,
                  transfer_protocol='rsync',
                  auto_start=True,
-                 remote_target=None):
+                 remote_target=None,
+                 cleanup=True):
 
         if (not os.path.isdir(exposure_directory)):
             raise ValueError("Input needs to be an existing directory")
@@ -55,6 +56,10 @@ class DTS ( object ):
 
         self.archive_ingestion_message = None
 
+        self.cleanup_when_complete = cleanup
+        self.cleanup_filelist = []
+        self.cleanup_directories = []
+
         self.database = database
         if (auto_start):
             self.archive()
@@ -78,6 +83,8 @@ class DTS ( object ):
         self.transfer_to_archive()
         self.report_new_file_to_archive()
         self.register_transfer_complete()
+        if (self.cleanup_when_complete):
+            self.cleanup_files()
 
     def get_filelist(self):
         # Check all files in the directory - we need to collect all FITS files
@@ -114,13 +121,21 @@ class DTS ( object ):
             print(file_info)
             (in_file, out_file, compress) = file_info
             if (compress):
+                dir,bn = os.path.split(out_file)
+                sub_directory = os.path.join(self.tar_directory, dir)
+                if (dir != '' and not os.path.isdir(sub_directory)):
+                    os.mkdir(sub_directory)
+                    self.cleanup_directories.append(sub_directory)
+
                 fz_file, md5 = self.fpack(in_file, out_file)
                 md5_data.append("%s %s" % (md5, fz_file))
+                self.cleanup_filelist.append(os.path.join(self.tar_directory, out_file))
             else:
                 full_out = os.path.join(self.tar_directory, out_file)
                 shutil.copy(in_file,full_out)
                 md5 = self.calculate_checksum(full_out)
                 md5_data.append("%s %s" % (md5, out_file))
+                self.cleanup_filelist.append(full_out)
 
         # create the md5.txt file
         md5_filename = os.path.join(os.path.join(self.scratch_dir, self.dir_name),
@@ -128,6 +143,7 @@ class DTS ( object ):
         print(md5_data)
         with open(md5_filename, "w") as md5f:
             md5f.write("\n".join(md5_data))
+        self.cleanup_filelist.append(md5_filename)
 
         # Now create the actual tar ball
         print("Making tar ball")
@@ -210,3 +226,36 @@ class DTS ( object ):
 
     def report_new_file_to_archive(self):
         return
+
+    def cleanup_files(self):
+
+        # first, delete all files
+        for fn in self.cleanup_filelist:
+            try:
+                if (os.path.isfile(fn)):
+                    os.remove(fn)
+            except OSError:
+                print("ERROR deleting file %s" % fn)
+
+        # also delete all dub-directories
+        for dn in self.cleanup_directories:
+            try:
+                if (os.path.isdir(dn)):
+                    os.removedirs(dn)
+            except OSError:
+                print("ERROR deleting directory %s - not empty?" % dn)
+
+        # and lastly, delete the directory for the tar-ball, followed by the tar-ball itself
+        if (os.path.isfile(self.tar_filename)):
+            try:
+                os.remove(self.tar_filename)
+            except OSError:
+                print("ERROR deleting tar-ball %s" % self.tar_filename)
+
+        if (os.path.isdir(self.tar_directory)):
+            try:
+                os.removedirs(self.tar_directory)
+            except OSError:
+                print("ERROR deleting temp directory %s" % (self.tar_directory))
+
+        pass
