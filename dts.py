@@ -5,6 +5,8 @@ import glob
 import hashlib
 import pyfits
 import time
+import shutil
+
 import config
 
 class DTS ( object ):
@@ -61,7 +63,7 @@ class DTS ( object ):
 
         # open each of the files and search for the OBSID keyword
         print("Updating OBSID from data")
-        for fn in self.filelist:
+        for (fn,_,_) in self.filelist:
             with pyfits.open(fn) as hdulist:
                 # hdulist.info()
                 for ext in hdulist:
@@ -79,19 +81,46 @@ class DTS ( object ):
 
     def get_filelist(self):
         # Check all files in the directory - we need to collect all FITS files
+
+        self.filelist = []
+
+        # collect all FITS files
         wildcards = os.path.join(self.exposure_directory, "*.fits")
         fits_files = glob.glob(wildcards)
+        for ff in fits_files:
+            _,bn = os.path.split(os.path.abspath(ff))
+            self.filelist.append([os.path.abspath(ff), bn+".fz", True])
+
+        # collect all expVideo files - these go in a sub-directory
+        expvideo_files = glob.glob(
+            os.path.join(os.path.join(self.exposure_directory, "expVideo"), "*.fits")
+        )
+        for ff in expvideo_files:
+            _, bn = os.path.split(os.path.abspath(ff))
+            self.filelist.append([os.path.abspath(ff), os.path.join("expVideo", bn)+".fz", True])
+
+        # also include the metainf.xml
+        self.filelist.append([os.path.join(self.exposure_directory, "metainf.xml"), "metainf.xml", False])
+
         # print("\n".join(fits_files))
-        self.filelist = fits_files
+        # self.filelist = fits_files
 
     def make_tar(self):
 
         # run fpack to enable compression on all image files
         print("Compressing data")
         md5_data = []
-        for filename in self.filelist: #fits_files:
-            fz_file, md5 = self.fpack(filename)
-            md5_data.append("%s %s" % (md5, fz_file))
+        for file_info in self.filelist: #fits_files:
+            print(file_info)
+            (in_file, out_file, compress) = file_info
+            if (compress):
+                fz_file, md5 = self.fpack(in_file, out_file)
+                md5_data.append("%s %s" % (md5, fz_file))
+            else:
+                full_out = os.path.join(self.tar_directory, out_file)
+                shutil.copy(in_file,full_out)
+                md5 = self.calculate_checksum(full_out)
+                md5_data.append("%s %s" % (md5, out_file))
 
         # create the md5.txt file
         md5_filename = os.path.join(os.path.join(self.scratch_dir, self.dir_name),
@@ -115,19 +144,19 @@ class DTS ( object ):
 
         pass
 
-    def fpack(self, filename):
-        _, basename = os.path.split(filename)
-        fz_filename = basename+".fz"
-        fz_filename_full = os.path.join(self.tar_directory, fz_filename)
+    def fpack(self, filename, outfile):
+        #_, basename = os.path.split(filename)
+        #fz_filename = basename+".fz"
+        fz_filename_full = os.path.join(self.tar_directory, outfile)
         cmd = "fpack -S %s > %s" % (filename, fz_filename_full)
         # print(cmd)
         self.execute(cmd)
         checksum = self.calculate_checksum(fz_filename_full)
-        return fz_filename, checksum
+        return outfile, checksum
 
     def transfer_to_archive(self):
 
-        if (self.transfer_protocol == 'scp' or True):
+        if (self.transfer_protocol == 'scp'):
             cmd = "scp %s %s" % (self.tar_filename, self.remote_target_directory)
         elif (self.transfer_protocol == 'rsync'):
             cmd = "rsync -avu --progress %s %s" % (self.tar_filename, self.remote_target_directory)
@@ -145,10 +174,11 @@ class DTS ( object ):
 
     def register_transfer_complete(self):
         # print("Marking as complete")
-        event = "pyDTS: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - ingest(%s): OK :: -1" % (
+        event = "pyDTS %s: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - ingest(%s): OK :: -1" % (
+            self.obsid,
             len(self.filelist), self.tar_filesize/2**20, self.tar_checksum,
             self.tar_transfer_time, self.tar_filesize/2**20/self.tar_transfer_time,
-            self.transfer_protocol, self.archive_ingestion_message,
+            self.transfer_protocol, self.remote_target_directory,
         )
         self.database.mark_exposure_archived(self.obsid, event=event)
         pass
