@@ -3,6 +3,7 @@
 import os
 import sys
 import subprocess
+import time
 
 import argparse
 import threading
@@ -48,43 +49,71 @@ if __name__ == "__main__":
 
     parser.add_argument('--db', default=False, action='store_true',
                         help="query ODI database")
-    parser.add_argument('--nthreads', default=1, type=int,
+    parser.add_argument('--nthreads', default=5, type=int,
                         help="number of threads for parallel transfer")
+    parser.add_argument("--monitor", default=False, action="store_true",
+                        help="keep monitoring the database")
+    parser.add_argument("--chunksize", default=25, type=int,
+                        help="number of frames to transfer between DB queries (only in monitoring mode)")
 
     args = parser.parse_args()
-
     odidb = query_db.ODIDB()
-
-    if (args.db):
-        exposures = odidb.query_exposures_for_transfer()
-        input_dirs = [(dir, obsid) for (id,obsid,dir) in exposures]
-    else:
-        input_dirs = []
-        # for dir in args.inputdir:
-        #     obsid = get_obsid_from_directory(dir)
-        #     input_dirs.append((dir,obsid))
-        input_dirs = [(dir,None) for dir in args.inputdir]
-
-    # create a work-queue and populate it with exposures to archive
     dts_queue = queue.Queue()
-    for (dir, obsid) in input_dirs:
-        print(dir, obsid)
+    first_run = True
 
-        dts_queue.put((dir, obsid))
-        # object = dts.DTS(dir, obsid=obsid, database=odidb)
-        # odidb.mark_exposure_archived(obsid)
-        #break
+    while(first_run or args.monitor):
 
-    print(len(input_dirs))
-        #transfer = dts.DTS(dir)
+        try:
+            if (args.db):
+                exposures = odidb.query_exposures_for_transfer()
+                input_dirs = [(dir, obsid) for (id,obsid,dir) in exposures]
+                if (args.monitor):
+                    input_dirs = input_dirs[:args.chunksize]
 
+                # print(input_dirs)
+            else:
+                input_dirs = []
+                # for dir in args.inputdir:
+                #     obsid = get_obsid_from_directory(dir)
+                #     input_dirs.append((dir,obsid))
+                input_dirs = [(dir,None) for dir in args.inputdir]
 
-    #
-    # start the worker threads
-    #
-    for i in range(args.nthreads):
-        t = DTS_Thread(queue=dts_queue, database=odidb)
-        t.setDaemon(True)
-        t.start()
+            # create a work-queue and populate it with exposures to archive
+            for (dir, obsid) in input_dirs:
+                print(dir, obsid)
 
-    dts_queue.join()
+                dts_queue.put((dir, obsid))
+                # object = dts.DTS(dir, obsid=obsid, database=odidb)
+                # odidb.mark_exposure_archived(obsid)
+                #break
+
+            print(len(input_dirs))
+                #transfer = dts.DTS(dir)
+
+            #
+            # start the worker threads
+            #
+            # for i in input_dirs:
+            #     task = dts_queue.get()
+            #     print(task)
+
+            threads = []
+            for i in range(args.nthreads):
+                t = DTS_Thread(queue=dts_queue, database=odidb)
+                t.setDaemon(True)
+                t.start()
+                threads.append(t)
+
+            dts_queue.join()
+
+            first_run = False
+
+            if (args.db and args.monitor):
+                # wait a little before checking again for more frames.
+                print("Checking for new frames after short break")
+                time.sleep(5)
+
+        except (KeyboardInterrupt, SystemExit) as e:
+            print("Closing down")
+            break
+
