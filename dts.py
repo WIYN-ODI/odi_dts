@@ -68,7 +68,7 @@ class DTS ( object ):
 
         # open each of the files and search for the OBSID keyword
         print("Updating OBSID from data")
-        for (fn,_,_) in self.filelist:
+        for (fn,_,_,_) in self.filelist:
             with pyfits.open(fn) as hdulist:
                 # hdulist.info()
                 for ext in hdulist:
@@ -96,7 +96,7 @@ class DTS ( object ):
         fits_files = glob.glob(wildcards)
         for ff in fits_files:
             _,bn = os.path.split(os.path.abspath(ff))
-            self.filelist.append([os.path.abspath(ff), bn+".fz", True])
+            self.filelist.append([os.path.abspath(ff), bn+".fz", True, True])
 
         # collect all expVideo files - these go in a sub-directory
         expvideo_files = glob.glob(
@@ -104,10 +104,10 @@ class DTS ( object ):
         )
         for ff in expvideo_files:
             _, bn = os.path.split(os.path.abspath(ff))
-            self.filelist.append([os.path.abspath(ff), os.path.join("expVideo", bn)+".fz", True])
+            self.filelist.append([os.path.abspath(ff), os.path.join("expVideo", bn)+".fz", True, True])
 
         # also include the metainf.xml
-        self.filelist.append([os.path.join(self.exposure_directory, "metainf.xml"), "metainf.xml", False])
+        self.filelist.append([os.path.join(self.exposure_directory, "metainf.xml"), "metainf.xml", False, False])
 
         # print("\n".join(fits_files))
         # self.filelist = fits_files
@@ -119,7 +119,7 @@ class DTS ( object ):
         md5_data = []
         for file_info in self.filelist: #fits_files:
             print(file_info)
-            (in_file, out_file, compress) = file_info
+            (in_file, out_file, compress, include_md5) = file_info
             if (compress):
                 dir,bn = os.path.split(out_file)
                 sub_directory = os.path.join(self.tar_directory, dir)
@@ -128,13 +128,15 @@ class DTS ( object ):
                     self.cleanup_directories.append(sub_directory)
 
                 fz_file, md5 = self.fpack(in_file, out_file)
-                md5_data.append("%s %s" % (md5, fz_file))
+                if (include_md5):
+                    md5_data.append("%s %s" % (md5, fz_file))
                 self.cleanup_filelist.append(os.path.join(self.tar_directory, out_file))
             else:
                 full_out = os.path.join(self.tar_directory, out_file)
                 shutil.copy(in_file,full_out)
-                md5 = self.calculate_checksum(full_out)
-                md5_data.append("%s %s" % (md5, out_file))
+                if (include_md5):
+                    md5 = self.calculate_checksum(full_out)
+                    md5_data.append("%s %s" % (md5, out_file))
                 self.cleanup_filelist.append(full_out)
 
         # create the md5.txt file
