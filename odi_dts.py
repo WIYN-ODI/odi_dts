@@ -8,9 +8,11 @@ import time
 import argparse
 import threading
 import queue
+import logging
 
 import dts
 import query_db
+import dts_logger
 
 
 class DTS_Thread(threading.Thread):
@@ -61,6 +63,8 @@ if __name__ == "__main__":
                         help="")
     args = parser.parse_args()
 
+    # setup logging
+    dtslog = dts_logger.dts_logging()
 
     odidb = query_db.ODIDB()
     dts_queue = queue.Queue()
