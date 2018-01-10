@@ -6,6 +6,7 @@ import hashlib
 import pyfits
 import time
 import shutil
+import logging
 
 import config
 
@@ -22,6 +23,8 @@ class DTS ( object ):
                  remote_target=None,
                  cleanup=True):
 
+        self.logger = logging.getLogger(obsid if obsid is not None else "??????")
+
         if (not os.path.isdir(exposure_directory)):
             raise ValueError("Input needs to be an existing directory")
 
@@ -31,13 +34,21 @@ class DTS ( object ):
         self.exposure_directory = exposure_directory
         self.scratch_dir = scratch_dir if scratch_dir is not None else "/tmp"
         _, self.dir_name = os.path.split(exposure_directory)
-        print(self.dir_name)
 
         self.get_filelist()
 
+        self.obsid = obsid
+        if (self.obsid is None):
+            self.update_obsid_from_files()
+
+        # prepare the logger
+        self.logger = logging.getLogger(self.obsid)
+
+        self.logger.info("Reading files from %s" % (self.dir_name))
+
         self.tar_directory = os.path.join(self.scratch_dir, self.dir_name)
         if (not os.path.isdir(self.tar_directory)):
-            print("Creating tar-directory: %s" % (self.tar_directory))
+            self.logger.info("Creating tar-directory: %s" % (self.tar_directory))
             os.mkdir(self.tar_directory)
 
         self.tar_filename = os.path.join(self.scratch_dir, self.dir_name)+".tar"
@@ -50,9 +61,6 @@ class DTS ( object ):
             self.remote_target_directory = remote_target
 
         self.tar_checksum = None
-        self.obsid = obsid
-        if (self.obsid is None):
-            self.update_obsid_from_files()
 
         self.archive_ingestion_message = None
 
@@ -115,10 +123,10 @@ class DTS ( object ):
     def make_tar(self):
 
         # run fpack to enable compression on all image files
-        print("Compressing data")
+        self.logger.info("Compressing data")
         md5_data = []
         for file_info in self.filelist: #fits_files:
-            print(file_info)
+            #print(file_info)
             (in_file, out_file, compress, include_md5) = file_info
             if (compress):
                 dir,bn = os.path.split(out_file)
@@ -128,12 +136,14 @@ class DTS ( object ):
                     self.cleanup_directories.append(sub_directory)
 
                 fz_file, md5 = self.fpack(in_file, out_file)
+                self.logger.info("compressing %s to %s" % (in_file, out_file))
                 if (include_md5):
                     md5_data.append("%s %s" % (md5, fz_file))
                 self.cleanup_filelist.append(os.path.join(self.tar_directory, out_file))
             else:
                 full_out = os.path.join(self.tar_directory, out_file)
                 shutil.copy(in_file,full_out)
+                self.logger.info("Copying %s to tar-prep directory" % (in_file))
                 if (include_md5):
                     md5 = self.calculate_checksum(full_out)
                     md5_data.append("%s %s" % (md5, out_file))
@@ -142,13 +152,13 @@ class DTS ( object ):
         # create the md5.txt file
         md5_filename = os.path.join(os.path.join(self.scratch_dir, self.dir_name),
                                     "md5.txt")
-        print(md5_data)
+        # print(md5_data)
         with open(md5_filename, "w") as md5f:
             md5f.write("\n".join(md5_data))
         self.cleanup_filelist.append(md5_filename)
 
         # Now create the actual tar ball
-        print("Making tar ball")
+        self.logger.info("Making tar ball (%s)" % (self.tar_filename))
         tar_cmd = "tar --create --seek --file=%s --directory=%s %s" % (
             self.tar_filename, self.scratch_dir, self.dir_name)
         # print(tar_cmd)
@@ -157,7 +167,7 @@ class DTS ( object ):
 
         self.tar_checksum = self.calculate_checksum(self.tar_filename)
         self.tar_filesize = os.path.getsize(self.tar_filename)
-
+        self.logger.info("Resulting tar-ball: %d bytes, MD5=%s" % (self.tar_filesize, self.tar_checksum))
         # print(self.tar_checksum)
 
         pass
@@ -181,13 +191,15 @@ class DTS ( object ):
         else:
             raise ValueError("Could not identfy which transfer protocal to use")
 
-        print("Copying to archive using %s (%s)" % (self.transfer_protocol, cmd))
+        self.logger.info("Copying to archive using %s (%s)" % (self.transfer_protocol, cmd))
         # print(cmd)
         start_time = time.time()
         self.execute(cmd)
         end_time = time.time()
         self.tar_transfer_time = end_time - start_time
-
+        self.logger.info("Done with transfer, time=%.1f seconds, bandwidth: %d bytes/sec" % (
+            self.tar_transfer_time, self.tar_filesize//self.tar_transfer_time
+        ))
         pass
 
     def register_transfer_complete(self):
@@ -199,6 +211,7 @@ class DTS ( object ):
             self.transfer_protocol, self.remote_target_directory,
         )
         self.database.mark_exposure_archived(self.obsid, event=event)
+        self.logger.info("Adding event to database: %s" % (event))
         pass
 
     def execute(self, cmd):
@@ -237,7 +250,7 @@ class DTS ( object ):
                 if (os.path.isfile(fn)):
                     os.remove(fn)
             except OSError:
-                print("ERROR deleting file %s" % fn)
+                self.logger.error("ERROR deleting file %s" % fn)
 
         # also delete all dub-directories
         for dn in self.cleanup_directories:
@@ -245,19 +258,20 @@ class DTS ( object ):
                 if (os.path.isdir(dn)):
                     os.removedirs(dn)
             except OSError:
-                print("ERROR deleting directory %s - not empty?" % dn)
+                self.logger.error("ERROR deleting directory %s - not empty?" % dn)
 
         # and lastly, delete the directory for the tar-ball, followed by the tar-ball itself
         if (os.path.isfile(self.tar_filename)):
             try:
                 os.remove(self.tar_filename)
             except OSError:
-                print("ERROR deleting tar-ball %s" % self.tar_filename)
+                self.logger.error("ERROR deleting tar-ball %s" % self.tar_filename)
 
         if (os.path.isdir(self.tar_directory)):
             try:
                 os.removedirs(self.tar_directory)
             except OSError:
-                print("ERROR deleting temp directory %s" % (self.tar_directory))
+                self.logger.error("ERROR deleting temp directory %s" % (self.tar_directory))
 
+        self.logger.info("Done cleaning up files and directories")
         pass
