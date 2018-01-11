@@ -7,6 +7,7 @@ import pyfits
 import time
 import shutil
 import logging
+import psutil
 
 import config
 
@@ -86,11 +87,18 @@ class DTS ( object ):
                         return
         return
 
+
     def archive(self):
-        self.make_tar()
-        self.transfer_to_archive()
-        self.report_new_file_to_archive()
-        self.register_transfer_complete()
+        all_steps_successful = False
+        if (self.make_tar()):
+            if (self.transfer_to_archive()):
+                if (self.report_new_file_to_archive()):
+                    self.register_transfer_complete()
+                    self.logger.info("All successful")
+                    all_steps_successful = True
+        if (not all_steps_successful):
+            self.mark_as_tried_and_failed()
+
         if (self.cleanup_when_complete):
             self.cleanup_files()
 
@@ -135,7 +143,10 @@ class DTS ( object ):
                     os.mkdir(sub_directory)
                     self.cleanup_directories.append(sub_directory)
 
-                fz_file, md5 = self.fpack(in_file, out_file)
+                fz_file, md5, returncode = self.fpack(in_file, out_file)
+                if (returncode != 0):
+                    return False
+
                 self.logger.info("compressing %s to %s" % (in_file, out_file))
                 if (include_md5):
                     md5_data.append("%s %s" % (md5, fz_file))
@@ -162,7 +173,9 @@ class DTS ( object ):
         tar_cmd = "tar --create --seek --file=%s --directory=%s %s" % (
             self.tar_filename, self.scratch_dir, self.dir_name)
         # print(tar_cmd)
-        self.execute(tar_cmd)
+        returncode = self.execute(tar_cmd)
+        if (returncode != 0):
+            return False
         #--remove-files
 
         self.tar_checksum = self.calculate_checksum(self.tar_filename)
@@ -170,17 +183,21 @@ class DTS ( object ):
         self.logger.info("Resulting tar-ball: %d bytes, MD5=%s" % (self.tar_filesize, self.tar_checksum))
         # print(self.tar_checksum)
 
-        pass
+        return True
 
     def fpack(self, filename, outfile):
         #_, basename = os.path.split(filename)
         #fz_filename = basename+".fz"
         fz_filename_full = os.path.join(self.tar_directory, outfile)
-        cmd = "fpack -S %s > %s" % (filename, fz_filename_full)
-        # print(cmd)
-        self.execute(cmd)
+        # cmd = "fpack -S %s > %s" % (filename, fz_filename_full)
+        # # print(cmd)
+        # returncode = self.execute(cmd, monitor=False)
+
+        cmd = "fpack -S %s" % (filename)
+        returncode = self.execute(cmd, monitor=False, redirect_stdout=fz_filename_full)
+
         checksum = self.calculate_checksum(fz_filename_full)
-        return outfile, checksum
+        return outfile, checksum, returncode
 
     def transfer_to_archive(self):
 
@@ -194,13 +211,14 @@ class DTS ( object ):
         self.logger.info("Copying to archive using %s (%s)" % (self.transfer_protocol, cmd))
         # print(cmd)
         start_time = time.time()
-        self.execute(cmd)
+        returncode = self.execute(cmd)
         end_time = time.time()
         self.tar_transfer_time = end_time - start_time
         self.logger.info("Done with transfer, time=%.1f seconds, bandwidth: %d bytes/sec" % (
             self.tar_transfer_time, self.tar_filesize//self.tar_transfer_time
         ))
-        pass
+        return (returncode == 0)
+
 
     def register_transfer_complete(self):
         # print("Marking as complete")
@@ -214,8 +232,69 @@ class DTS ( object ):
         self.logger.info("Adding event to database: %s" % (event))
         pass
 
-    def execute(self, cmd):
-        os.system(cmd)
+
+    def mark_as_tried_and_failed(self):
+        event = "pyDTS %s: data transfer tried but failed: ERROR :: -1" % (
+            self.obsid,
+        )
+        self.database.mark_exposure_archived(self.obsid, event=event)
+        self.logger.info("Adding event to database: %s" % (event))
+
+
+    def execute(self, cmd, monitor=True, redirect_stdout=None):
+        try:
+            stdout = subprocess.PIPE
+            if (redirect_stdout is not None):
+                stdout = open(redirect_stdout, "wb")
+            ret = subprocess.Popen(cmd.split(),
+                                   stdout=stdout,
+                                   stderr=subprocess.PIPE)
+
+            if (monitor):
+                #
+                # Wait for sextractor to finish (or die)
+                #
+                ps = psutil.Process(ret.pid)
+                execution_error = False
+                while(True):
+                    try:
+                        ps_status = ps.status()
+                        if (ps_status in [psutil.STATUS_ZOMBIE,
+                                          psutil.STATUS_DEAD] and
+                            ret.poll() is not None):
+                            self.logger.critical("Command died unexpectedly (%s ==> %s)" % (
+                                cmd, str(ps_status)))
+                            execution_error = True
+                            break
+                    except psutil.NoSuchProcess:
+                        pass
+
+                    if (ret.poll() is None):
+                        # self.logger.debug("Command completed successfully!")
+                        break
+                    time.sleep(0.05)
+            else:
+                execution_error = False
+
+            if (not execution_error):
+                (cmd_stdout, cmd_stderr) = ret.communicate()
+                if (ret.returncode != 0):
+                    self.logger.warning("Command might have a problem, check the log")
+                    self.logger.debug("Stdout=\n"+cmd_stdout)
+                    self.logger.debug("Stderr=\n"+cmd_stderr)
+
+        except OSError as e:
+            self.logger.critical("Execution failed: %s" % (str(e)))
+        end_time = time.time()
+
+        # logger.debug("SourceExtractor returned after %.3f seconds" % (end_time - start_time))
+
+        if (redirect_stdout is not None):
+            stdout.close()
+
+        # os.system(cmd)
+        return ret.returncode
+
 
     def calculate_checksum(self, fn):
 
