@@ -319,7 +319,7 @@ class DTS ( object ):
         #  for fname in fnamelst]
 
     def report_new_file_to_archive(self):
-        return
+        return True
 
     def cleanup_files(self):
 
@@ -335,7 +335,7 @@ class DTS ( object ):
         for dn in self.cleanup_directories:
             try:
                 if (os.path.isdir(dn)):
-                    os.removedirs(dn)
+                    os.rmdir(dn)
             except OSError:
                 self.logger.error("ERROR deleting directory %s - not empty?" % dn)
 
@@ -348,7 +348,7 @@ class DTS ( object ):
 
         if (os.path.isdir(self.tar_directory)):
             try:
-                os.removedirs(self.tar_directory)
+                os.rmdir(self.tar_directory)
             except OSError:
                 self.logger.error("ERROR deleting temp directory %s" % (self.tar_directory))
 
