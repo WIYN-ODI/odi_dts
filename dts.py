@@ -32,7 +32,7 @@ class DTS ( object ):
             exposure_directory = exposure_directory[:-1]
 
         self.exposure_directory = exposure_directory
-        self.scratch_dir = scratch_dir if scratch_dir is not None else "/tmp"
+        self.scratch_dir = scratch_dir if scratch_dir is not None else config.tar_scratchdir
         _, self.dir_name = os.path.split(exposure_directory)
 
         self.get_filelist()
