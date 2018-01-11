@@ -23,6 +23,7 @@ class DTS_Thread(threading.Thread):
         self.out_queue = out_queue
         self.database = database
         self.delete_when_done = delete_when_done
+        self.logger = logging.getLogger("DTS")
 
     def run(self):
         while(True):
@@ -35,8 +36,21 @@ class DTS_Thread(threading.Thread):
                 break
 
             (dir, obsid) = exposure_info
-            exposure2archive = dts.DTS(dir, obsid=obsid, database=self.database,
-                                       cleanup=self.delete_when_done)
+            try:
+                exposure2archive = dts.DTS(dir, obsid=obsid, database=self.database,
+                                           cleanup=self.delete_when_done)
+            except ValueError as v:
+                self.logger.error("ERROR starting DTS for OBSID %s in %s" % (obsid, dir))
+                if (not os.path.isdir(dir) and obsid is not None):
+                    # Directory is missing
+                    # mark this exposure as problematic but done to avoid
+                    # running into the same problem again when we check the
+                    # database again.
+                    event_report = "pyDTS ERROR %s: directory %s not found :: 0" % (
+                        obsid, dir
+                    )
+                    self.database.mark_exposure_archived(
+                        obsid=obsid, event=event_report)
 
             #signals to queue job is done
             self.queue.task_done()
