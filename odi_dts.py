@@ -13,6 +13,7 @@ import logging
 import dts
 import query_db
 import dts_logger
+import config
 
 
 class DTS_Thread(threading.Thread):
@@ -84,6 +85,11 @@ if __name__ == "__main__":
     dts_queue = queue.Queue()
     first_run = True
 
+    # make sure to create the DTS scratch directory
+    if (not os.path.isdir(config.tar_scratchdir)):
+        os.mkdir(config.tar_scratchdir)
+
+
     while(first_run or args.monitor):
 
         try:
@@ -114,14 +120,10 @@ if __name__ == "__main__":
                 #transfer = dts.DTS(dir)
 
             #
-            # start the worker threads
+            # Start the worker threads
             #
-            # for i in input_dirs:
-            #     task = dts_queue.get()
-            #     print(task)
-
             threads = []
-            threads_needed = args.nthreads if args.nthreads < len(input_dirs) else len(input_dirs)
+            threads_needed = args.nthreads  # if args.nthreads < len(input_dirs) else len(input_dirs)
             for i in range(threads_needed):
                 t = DTS_Thread(queue=dts_queue, database=odidb,
                                delete_when_done=args.delete_when_done)
@@ -129,16 +131,30 @@ if __name__ == "__main__":
                 t.start()
                 threads.append(t)
 
-            dts_queue.join()
+                # send the queue termination message
+                dts_queue.put(None)
+
+            # join threads to wait until all are shutdown
+            for t in threads:
+                t.join()
+
+            #
+            # start the worker threads
+            #
+            # for i in input_dirs:
+            #     task = dts_queue.get()
+            #     print(task)
+
+            # dts_queue.join()
 
             first_run = False
 
             if (args.db and args.monitor):
                 # wait a little before checking again for more frames.
+                time.sleep(0.002) # flush out log messages
                 print("Checking for new frames after short break")
                 time.sleep(5)
 
         except (KeyboardInterrupt, SystemExit) as e:
             print("Closing down")
             break
-
