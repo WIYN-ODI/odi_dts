@@ -9,6 +9,7 @@ import threading
 from pprint import pprint
 
 import config
+import commandline
 
 class ODIDB(object):
 
@@ -29,9 +30,13 @@ class ODIDB(object):
 
 
 
-    def query_exposures_for_transfer(self):
+    def query_exposures_for_transfer(self, timeframe=7., all=False):
 
         self.lock.acquire() #blocking=True
+
+        now = datetime.datetime.now()
+        delta_t = datetime.timedelta(days=timeframe)
+        cutoff_time = now - delta_t
 
         # select all exposures that have not been marked as
         # - complete (return code=0) yet
@@ -39,7 +44,11 @@ class ODIDB(object):
         sql = """\
     SELECT  exp.id,exp.exposure,exp.fileaddr
     FROM    EXPOSURES exp
-    WHERE   exp.id NOT IN
+    WHERE   exp.CREATETIME > :cutoff"""
+
+        if (not all):
+            sql += """ AND    
+    exp.id NOT IN
     (
     SELECT  expid
     FROM    EXPOSURE_EVENT
@@ -50,7 +59,10 @@ class ODIDB(object):
     ORDER BY exp.id DESC
     """
 
-        self.cursor.execute(sql)
+        self.cursor.prepare(sql)
+        self.cursor.setinputsizes(cutoff=cx_Oracle.TIMESTAMP)
+        self.cursor.execute(None, {'cutoff': cutoff_time,})
+        #self.cursor.execute(sql)
         results = self.cursor.fetchall()
         # pprint(results)
 
@@ -120,8 +132,14 @@ if __name__ == "__main__":
 
     db = ODIDB()
 
-    exposures = db.query_exposures_for_transfer()
+    args = commandline.parse()
+    exposures = db.query_exposures_for_transfer(timeframe=args.timeframe, all=True)
+
     print("Found %d exposures to be transferred" % (len(exposures)))
-    for e in exposures: #((id,exposure,path) in exposures):
+    for n,e in enumerate(exposures): #((id,exposure,path) in exposures):
+        if (n%50 == 0):
+            print("")
+            print("#####  exp-id  ___________________OBSID   ........................... file-location ...........................")
+            print("")
         (id,exposure,path) = e
-        print("%6d %25s   %s" % (id,exposure,path))
+        print("%5d: %6d %25s   %s" % (n+1,id,exposure,path))
