@@ -6,7 +6,6 @@ import subprocess
 import time
 import datetime
 
-import argparse
 import threading
 import queue
 import logging
@@ -15,7 +14,7 @@ import dts
 import query_db
 import dts_logger
 import config
-
+import commandline
 
 class DTS_Thread(threading.Thread):
     """Threaded Url Grab"""
@@ -60,27 +59,7 @@ class DTS_Thread(threading.Thread):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser()
-    parser.add_argument("inputdir", nargs='*',
-                        help="List of exposure directories to transfer")
-    parser.add_argument("--sshkey",
-                        default=None,
-                        help="Specify ssh-key for remote login")
-
-    parser.add_argument('--db', default=False, action='store_true',
-                        help="query ODI database")
-    parser.add_argument('--nthreads', default=5, type=int,
-                        help="number of threads for parallel transfer")
-    parser.add_argument("--monitor", default=False, action="store_true",
-                        help="keep monitoring the database")
-    parser.add_argument("--chunksize", default=25, type=int,
-                        help="number of frames to transfer between DB queries (only in monitoring mode)")
-    parser.add_argument("--keep", dest="delete_when_done", default=True, action='store_false',
-                        help="Keep intermediate files (fz-compressed FITS & tar-ball) rather than deleting them when done")
-    parser.add_argument("--checkevery", default=15, type=float,
-                        help="Pause between database checks when no new exposures were found")
-
-    args = parser.parse_args()
+    args = commandline.parse()
 
     # setup logging
     dtslog = dts_logger.dts_logging()
@@ -99,7 +78,7 @@ if __name__ == "__main__":
         truncated_list = False
         try:
             if (args.db):
-                exposures = odidb.query_exposures_for_transfer()
+                exposures = odidb.query_exposures_for_transfer(timeframe=args.timeframe)
                 input_dirs = [(dir, obsid) for (id,obsid,dir) in exposures]
                 if (len(input_dirs) <= 0):
                     # no new files to transfer have been found
