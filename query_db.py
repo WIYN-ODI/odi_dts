@@ -33,7 +33,9 @@ class ODIDB(object):
 
         self.lock.acquire() #blocking=True
 
-        # select all exposures that have not been marked as complete (return code=0) yet
+        # select all exposures that have not been marked as
+        # - complete (return code=0) yet
+        # - tried but failed
         sql = """\
     SELECT  exp.id,exp.exposure,exp.fileaddr
     FROM    EXPOSURES exp
@@ -42,7 +44,8 @@ class ODIDB(object):
     SELECT  expid
     FROM    EXPOSURE_EVENT
     WHERE event like '%:: 0%' OR 
-          event like 'ppa ingested OK%'
+          event like 'ppa ingested OK%' OR
+          event like 'pyDTS%ERROR%'
     )
     ORDER BY exp.id DESC
     """
