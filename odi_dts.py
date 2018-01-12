@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 import time
+import datetime
 
 import argparse
 import threading
@@ -75,7 +76,10 @@ if __name__ == "__main__":
     parser.add_argument("--chunksize", default=25, type=int,
                         help="number of frames to transfer between DB queries (only in monitoring mode)")
     parser.add_argument("--keep", dest="delete_when_done", default=True, action='store_false',
-                        help="")
+                        help="Keep intermediate files (fz-compressed FITS & tar-ball) rather than deleting them when done")
+    parser.add_argument("--checkevery", default=15, type=float,
+                        help="Pause between database checks when no new exposures were found")
+
     args = parser.parse_args()
 
     # setup logging
@@ -89,14 +93,29 @@ if __name__ == "__main__":
     if (not os.path.isdir(config.tar_scratchdir)):
         os.mkdir(config.tar_scratchdir)
 
-
+    logger = logging.getLogger("ODI-DTS")
     while(first_run or args.monitor):
 
+        truncated_list = False
         try:
             if (args.db):
                 exposures = odidb.query_exposures_for_transfer()
                 input_dirs = [(dir, obsid) for (id,obsid,dir) in exposures]
+                if (len(input_dirs) <= 0):
+                    # no new files to transfer have been found
+                    sys.stdout.write("\rNo files to transfer at %s, checking again soon" % (str(datetime.datetime.now())))
+                    sys.stdout.flush()
+                    time.sleep(args.checkevery)
+                    continue
+                else:
+                    print()
+
                 if (args.monitor):
+                    if (len(input_dirs) > args.chunksize):
+                        truncated_list = True
+                        logger.info("Limiting work to %d exposures (out of %d)" % (
+                            args.chunksize, len(input_dirs)
+                        ))
                     input_dirs = input_dirs[:args.chunksize]
 
                 # print(input_dirs)
@@ -109,14 +128,14 @@ if __name__ == "__main__":
 
             # create a work-queue and populate it with exposures to archive
             for (dir, obsid) in input_dirs:
-                print(dir, obsid)
+                # print(dir, obsid)
 
                 dts_queue.put((dir, obsid))
                 # object = dts.DTS(dir, obsid=obsid, database=odidb)
                 # odidb.mark_exposure_archived(obsid)
                 #break
 
-            print(len(input_dirs))
+            # print(len(input_dirs))
                 #transfer = dts.DTS(dir)
 
             #
@@ -153,7 +172,7 @@ if __name__ == "__main__":
                 # wait a little before checking again for more frames.
                 time.sleep(0.002) # flush out log messages
                 print("Checking for new frames after short break")
-                time.sleep(5)
+                time.sleep(1. if truncated_list else args.checkevery)
 
         except (KeyboardInterrupt, SystemExit) as e:
             print("Closing down")
