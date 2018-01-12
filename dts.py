@@ -153,12 +153,21 @@ class DTS ( object ):
                 self.cleanup_filelist.append(os.path.join(self.tar_directory, out_file))
             else:
                 full_out = os.path.join(self.tar_directory, out_file)
-                shutil.copy(in_file,full_out)
-                self.logger.info("Copying %s to tar-prep directory" % (in_file))
-                if (include_md5):
-                    md5 = self.calculate_checksum(full_out)
-                    md5_data.append("%s %s" % (md5, out_file))
+                try:
+                    shutil.copy(in_file,full_out)
+                    self.logger.info("Copying %s to tar-prep directory" % (in_file))
+                    if (include_md5):
+                        md5 = self.calculate_checksum(full_out)
+                        md5_data.append("%s %s" % (md5, out_file))
+                except IOError as e:
+                    self.logger.error("I/O Error (%d) while copying %s: %s" % (e.errno, in_file, e.strerror))
+                    # likely caused by file-not-found
+                    pass
                 self.cleanup_filelist.append(full_out)
+
+        if (len(md5_data) <= 0):
+            # no data here
+            return False
 
         # create the md5.txt file
         md5_filename = os.path.join(os.path.join(self.scratch_dir, self.dir_name),
