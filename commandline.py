@@ -43,6 +43,11 @@ def parse():
         "--timeframe", default=7, type=float,
         help="time-scale in days to search for exposures to transfer (e.g 7 means all exposures taken during past 7 days)")
 
+    parser.add_argument(
+        "--resend", default=False, type=bool, action="store_true",
+        help="Re-send files even though they might be marked as complete already"
+    )
+
     args = parser.parse_args()
 
     return args
