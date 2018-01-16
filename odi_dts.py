@@ -98,6 +98,15 @@ if __name__ == "__main__":
                     input_dirs = input_dirs[:args.chunksize]
 
                 # print(input_dirs)
+            elif (len(args.inputdir) == 1 and os.path.isfile(args.inputdir[0])):
+                # given a file to read input files from
+                input_dirs = []
+                with open(args.inputdir[0], "r") as f:
+                    for line in f.readlines():
+                        if (line.startswith("#") or len(line)<15):
+                            continue
+                        input_dirs.append((None, line.split(",")[0]))
+
             else:
                 input_dirs = []
                 # for dir in args.inputdir:
