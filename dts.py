@@ -25,6 +25,18 @@ class DTS ( object ):
                  cleanup=True):
 
         self.logger = logging.getLogger(obsid if obsid is not None else "??????")
+        self.database = database
+
+        if (exposure_directory is None and obsid is not None):
+            # This is a special case to make re-send exposures easier, as OBSID
+            # is easy to extract from PPA, while the directory is something very
+            # specific to the ODI archive at WIYN
+            try:
+                exposure_directory = self.database.get_directory_from_obsid(obsid)
+            except ValueError:
+                self.logger.error("Unable to find exposure directory for %s" % (obsid))
+                # no valid directory found
+                return
 
         if (not os.path.isdir(exposure_directory)):
             raise ValueError("Input needs to be an existing directory")
@@ -69,7 +81,6 @@ class DTS ( object ):
         self.cleanup_filelist = []
         self.cleanup_directories = []
 
-        self.database = database
         if (auto_start):
             self.archive()
 
