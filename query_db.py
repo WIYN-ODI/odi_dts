@@ -106,7 +106,8 @@ class ODIDB(object):
         # sql = "INSERT INTO EXPOSURE_EVENT (EXPID, EVENT) VALUES (:1, :2)"
         # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENT) VALUES (SEQ_EVENTID.next_val, :1, :2)"
         # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :1, :2, :3)"
-        sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :expid, :eventtime, :event)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :expid, :eventtime, :event)"
+        sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES (EXP_EVENTID.nextval, :expid, :eventtime, :event)"
 
         values = {'expid': exposure_id, 'eventtime':event_time, 'event':event}
         # print(sql)
@@ -120,6 +121,18 @@ class ODIDB(object):
         self.lock.release()
 
         return
+
+    def get_directory_from_obsid(self, obsid):
+        sql = "SELECT FILEADDR FROM EXPOSURES WHERE EXPOSURE='%s'" % (obsid)
+        # print(sql)
+        self.cursor.execute(sql)
+        results = self.cursor.fetchall()
+        if (len(results) != 1):
+            raise ValueError("Wrong number of exposures (%d) with OBSID=%s" % (
+                len(results), obsid
+            ))
+        # print(results)
+        return results[0][0]
 
 
     def __del__(self):
