@@ -70,7 +70,21 @@ class ODIDB(object):
 
         return results
 
-    def mark_exposure_archived(self, obsid, event=None):
+
+    def check_for_exposures(self, last_id):
+        self.lock.acquire()
+        # sql = "SELECT ID,CREATETIME,EXPOSURE FROM EXPOSURES WHERE ID > %d" % (last_id)
+
+        sql = """select ID,CREATETIME,EXPOSURE from exposures exp where exp.id not in (select expid from exposure_event where event like 'ppa notification OK%') order by exp.createtime  desc
+        """
+        self.cursor.execute(sql)
+        results = self.cursor.fetchall()
+        self.lock.release()
+
+        return results
+
+
+    def mark_exposure_archived(self, obsid, event=None, dryrun=False):
 
         self.lock.acquire() #blocking=True)
         print("Adding completion report to EXPOSURE_EVENT table")
@@ -113,10 +127,13 @@ class ODIDB(object):
         # print(sql)
         # print(values)
         # self.cursor.execute(sql, values)
-        self.cursor.prepare(sql)
-        self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
-        self.cursor.execute(None, values)
-        self.connection.commit()
+        if (not dryrun):
+            self.cursor.prepare(sql)
+            self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
+            self.cursor.execute(None, values)
+            self.connection.commit()
+        else:
+            print("DRYRUN: %s (%s)" % (sql, str(values)))
 
         self.lock.release()
 
