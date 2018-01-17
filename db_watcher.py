@@ -86,12 +86,21 @@ class ExposureWatcher(threading.Thread):
                     if (id > self.last_known):
                         self.last_known = id
 
-                    self.ppa_comm.report_exposure(
+                    sent_ok = self.ppa_comm.report_exposure(
                         timestamp=createtime,
                         obsid=exposure,
                         msg_type="create"
                     )
                     self.logger.info("Reporting new exposure to PPA: %s" % (exposure))
+
+                    if (sent_ok):
+                        # update the exposure event database to mark this
+                        # exposure as sent to PPA
+                        self.odidb.mark_exposure_archived(
+                            obsid=exposure,
+                            event="ppa notification OK - pyDTS - %s" % (exposure),
+                            dryrun=True,
+                        )
 
             # sql = "select ID, EXPOSURE, CREATETIME from EXPOSURES ELSE WHERE id > %d" % (self.last_known)
             # self.odidb.
