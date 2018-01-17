@@ -12,7 +12,7 @@ logging.getLogger("pika").setLevel(logging.WARNING)
 
 class PPA (object):
 
-    def __init__(self, server_name=None, username=None, password=None, virtual_host=None, port=5672):
+    def __init__(self, server_name=None, username=None, password=None, virtual_host=None, port=5672, reuse=True):
 
         self.server_name = server_name if server_name is not None else config.ppa_server_name
         self.username = username if username is not None else config.ppa_username
@@ -32,6 +32,11 @@ class PPA (object):
         )
         self.connection = None
 
+        # if (reuse):
+        #     self.channel = None
+        #     self.queue = None
+
+        self.connect()
 
     def connect(self):
         if (self.connection is None):
@@ -45,7 +50,12 @@ class PPA (object):
             # self.connection = pika.adapters.select_connection.SelectConnection(
             #     parameters=self.parameters,
             # )
-        return (self.connection is not None)
+
+            self.channel = self.connection.channel()
+            self.channel.confirm_delivery()
+
+        return (self.connection is not None and self.channel is not None)
+
 
 
     def _on_connect(self):
@@ -56,13 +66,9 @@ class PPA (object):
         if (not self.connect()):
             return False
 
-        channel = self.connection.channel()
-        # queue = channel.queue_declare()
+        queue = self.channel.queue_declare(queue=target_queue, durable=True)
 
-        queue = channel.queue_declare(queue=target_queue, durable=True)
-        channel.confirm_delivery()
-
-        success = channel.basic_publish(
+        success = self.channel.basic_publish(
             exchange='', #target_queue, #"odi",
             routing_key=target_queue,
             body=message,
