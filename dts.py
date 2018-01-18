@@ -22,10 +22,13 @@ class DTS ( object ):
                  transfer_protocol='rsync',
                  auto_start=True,
                  remote_target=None,
-                 cleanup=True):
+                 cleanup=True,
+                 ppa=None,
+                 ):
 
         self.logger = logging.getLogger(obsid if obsid is not None else "??????")
         self.database = database
+        self.ppa = ppa
 
         if (exposure_directory is None and obsid is not None):
             # This is a special case to make re-send exposures easier, as OBSID
@@ -101,14 +104,19 @@ class DTS ( object ):
 
     def archive(self):
         all_steps_successful = False
+        self.ppa.report_exposure(obsid=self.obsid, msg_type="send",)
         if (self.make_tar()):
             if (self.transfer_to_archive()):
                 if (self.report_new_file_to_archive()):
                     self.register_transfer_complete()
                     self.logger.info("All successful")
                     all_steps_successful = True
+                    self.ppa.report_exposure(obsid=self.obsid, msg_type="send_complete")
         if (not all_steps_successful):
             self.mark_as_tried_and_failed()
+            # TODO: ADD MORE INFO ABOUT ERROR
+            self.ppa.report_exposure(obsid=self.obsid, msg_type="error",
+                                     comment="Error during transport WIYN-->PPA. Check logs for now, detailed error message not yet implemented.")
 
         if (self.cleanup_when_complete):
             self.cleanup_files()
