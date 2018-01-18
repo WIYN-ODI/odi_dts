@@ -6,10 +6,13 @@ import threading
 import time
 import queue
 import logging
+import datetime
+import sys
 
 import ppa_communication
 import query_db
 import dts_logger
+import commandline
 
 # shutdown = False
 
@@ -39,12 +42,13 @@ import dts_logger
 
 class ExposureWatcher(threading.Thread):
 
-    def __init__(self, ppa_comm, db_connection, last_exposure=0):
+    def __init__(self, ppa_comm, db_connection, args):
         threading.Thread.__init__(self)
         self.setDaemon(True)
 
         self.ppa_comm = ppa_comm
         self.odidb = db_connection
+        self.args = args
 
         self.logger = logging.getLogger("ExposureWatcher")
 
@@ -65,7 +69,6 @@ class ExposureWatcher(threading.Thread):
         # print("--> Rowids?:", bool(self.sub.qos & cx_Oracle.SUBSCR_QOS_ROWIDS))
         # self.sub.registerquery("select * from DEBUGLOG")
 
-        self.last_known = last_exposure
         self.shutdown = False
 
     def new_exposure(self):
@@ -75,16 +78,15 @@ class ExposureWatcher(threading.Thread):
 
     def run(self):
 
-        print("Running")
+        self.logger.info("Starting up the new exposure PPA notifier")
         while (not self.shutdown):
 
-            new_exposures = odidb.check_for_exposures(self.last_known)
+            new_exposures = self.odidb.check_for_exposures()
 
             if (len(new_exposures) > 0):
+                self.logger.info("Found %d new exposure%s to report to PPA" % (len(new_exposures), "" if len(new_exposures) == 1 else "s"))
                 for exp in new_exposures:
                     id, createtime, exposure = exp
-                    if (id > self.last_known):
-                        self.last_known = id
 
                     sent_ok = self.ppa_comm.report_exposure(
                         timestamp=createtime,
@@ -99,7 +101,7 @@ class ExposureWatcher(threading.Thread):
                         self.odidb.mark_exposure_archived(
                             obsid=exposure,
                             event="ppa notification OK - pyDTS - %s" % (exposure),
-                            dryrun=True,
+                            dryrun=False,
                         )
 
             # sql = "select ID, EXPOSURE, CREATETIME from EXPOSURES ELSE WHERE id > %d" % (self.last_known)
@@ -107,10 +109,10 @@ class ExposureWatcher(threading.Thread):
             # print("Waiting for new exposures....")
 
 
-            loop = 0
-            while (loop < 100 and not self.shutdown):
+            pause = 0
+            while (pause < self.args.checkevery and not self.shutdown):
                 time.sleep(0.01)
-                loop += 1
+                pause += 0.01
             # if (self.shutdown):
             #     break
             #
@@ -127,10 +129,9 @@ if __name__ == "__main__":
     odidb = query_db.ODIDB()
     ppa = ppa_communication.PPA()
     dtslog = dts_logger.dts_logging()
+    args = commandline.parse()
 
-    last_exposure = 58174
-
-    watcher  = ExposureWatcher(ppa, odidb, last_exposure)
+    watcher  = ExposureWatcher(ppa, odidb, args)
     watcher.start()
 
     while (True):
