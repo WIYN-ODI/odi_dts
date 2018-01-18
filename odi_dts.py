@@ -39,10 +39,11 @@ class DTS_Thread(threading.Thread):
             if (exposure_info is None):
                 break
 
-            (dir, obsid) = exposure_info
+            (dir, obsid, extra) = exposure_info
             try:
                 exposure2archive = dts.DTS(dir, obsid=obsid, database=self.database,
                                            cleanup=self.delete_when_done,
+                                           extra=extra,
                                            ppa=self.ppa)
             except ValueError as v:
                 self.logger.error("ERROR starting DTS for OBSID %s in %s" % (obsid, dir))
@@ -153,8 +154,10 @@ class DTS_ExposureSender(threading.Thread):
             # Check for new exposures
             #
             exposures = self.odidb.query_exposures_for_transfer(
-                timeframe=self.args.timeframe)
-            input_dirs = [(dir, obsid) for (id, obsid, dir) in exposures]
+                timeframe=self.args.timeframe,
+                include_resends=True
+            )
+            input_dirs = [(dir, obsid,extra) for (id, obsid, dir,extra) in exposures]
             if (len(input_dirs) <= 0):
                 # no new files to transfer have been found
                 if (self.args.verbose):
@@ -183,9 +186,9 @@ class DTS_ExposureSender(threading.Thread):
             #
             # create a work-queue and populate it with exposures to archive
             #
-            for (dir, obsid) in input_dirs:
+            for (dir, obsid, extra) in input_dirs:
                 # print(dir, obsid)
-                self.dts_queue.put((dir, obsid))
+                self.dts_queue.put((dir, obsid, extra))
 
             #
             # Start the worker threads
@@ -256,7 +259,7 @@ if __name__ == "__main__":
     #
     while (True):
         try:
-            sender.join(10)
+            time.sleep(1)
         except (SystemExit, KeyboardInterrupt):
             watcher.shutdown = True
             sender.shutdown = True

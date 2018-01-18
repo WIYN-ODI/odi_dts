@@ -24,11 +24,13 @@ class DTS ( object ):
                  remote_target=None,
                  cleanup=True,
                  ppa=None,
+                 extra=None,
                  ):
 
         self.logger = logging.getLogger(obsid if obsid is not None else "??????")
         self.database = database
         self.ppa = ppa
+        self.extra = extra
 
         if (exposure_directory is None and obsid is not None):
             # This is a special case to make re-send exposures easier, as OBSID
@@ -77,12 +79,19 @@ class DTS ( object ):
             self.remote_target_directory = remote_target
 
         self.tar_checksum = None
-
+        self.tar_filesize = -1
+        self.tar_transfer_time = -1
         self.archive_ingestion_message = None
 
         self.cleanup_when_complete = cleanup
         self.cleanup_filelist = []
         self.cleanup_directories = []
+
+        self.ppa_send = "send"
+        self.ppa_send_complete = "send_complete"
+        if (self.extra == "resend"):
+            self.ppa_send = "resend"
+            self.ppa_send_complete = "resend_complete"
 
         if (auto_start):
             self.archive()
@@ -104,14 +113,14 @@ class DTS ( object ):
 
     def archive(self):
         all_steps_successful = False
-        self.ppa.report_exposure(obsid=self.obsid, msg_type="send",)
+        self.ppa.report_exposure(obsid=self.obsid, msg_type=self.ppa_send,)
         if (self.make_tar()):
             if (self.transfer_to_archive()):
                 if (self.report_new_file_to_archive()):
                     self.register_transfer_complete()
                     self.logger.info("All successful")
                     all_steps_successful = True
-                    self.ppa.report_exposure(obsid=self.obsid, msg_type="send_complete")
+                    self.ppa.report_exposure(obsid=self.obsid, msg_type=self.ppa_send_complete)
         if (not all_steps_successful):
             self.mark_as_tried_and_failed()
             # TODO: ADD MORE INFO ABOUT ERROR
@@ -250,8 +259,9 @@ class DTS ( object ):
 
     def register_transfer_complete(self):
         # print("Marking as complete")
-        event = "pyDTS %s: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - upload(%s): OK :: 0" % (
-            self.obsid,
+        extra_formatted = '' if self.extra is None else "%s " % (self.extra)
+        event = "pyDTS %s%s: fpack(%d) - tar(%5.1fMB, MD5=%s) - transfer(%4.1fs @ %5.2fMB/s via %s) - upload(%s): OK :: 0" % (
+            extra_formatted, self.obsid,
             len(self.filelist), self.tar_filesize/2**20, self.tar_checksum,
             self.tar_transfer_time, self.tar_filesize/2**20/self.tar_transfer_time,
             self.transfer_protocol, self.remote_target_directory,

@@ -5,6 +5,7 @@ import sys
 import cx_Oracle
 import datetime
 import threading
+import logging
 
 from pprint import pprint
 
@@ -26,11 +27,13 @@ class ODIDB(object):
 
         self.cursor = self.connection.cursor()
 
+        self.logger = logging.getLogger("ODI-DB")
+
         self.lock = threading.Lock()
 
 
 
-    def query_exposures_for_transfer(self, timeframe=7., all=False):
+    def query_exposures_for_transfer(self, timeframe=7., all=False, include_resends=False):
 
         self.lock.acquire() #blocking=True
 
@@ -42,7 +45,7 @@ class ODIDB(object):
         # - complete (return code=0) yet
         # - tried but failed
         sql = """\
-    SELECT  exp.id,exp.exposure,exp.fileaddr
+    SELECT  exp.id,exp.exposure,exp.fileaddr,'' as extra
     FROM    EXPOSURES exp
     WHERE   exp.CREATETIME > :cutoff"""
 
@@ -65,6 +68,33 @@ class ODIDB(object):
         #self.cursor.execute(sql)
         results = self.cursor.fetchall()
         # pprint(results)
+
+        if (include_resends):
+            # print("Checking for files that need re-sending")
+            sql = """\
+select exp.id, exp.exposure,exp.fileaddr,'resend' as extra 
+from exposures exp where exp.id in (
+    select req.req_expid from (
+        select expid as req_expid,count(expid) as resend_requests from exposure_event
+        where event like 'ppa request resend%'
+        group by expid
+        ) REQ
+    JOIN (SElect expid,count(expid) as resend_count from exposure_event
+        where event like 'pyDTS resend%'
+        group by expid
+        ) comp
+    on req.req_expid = comp.expid
+    where req.resend_requests>comp.resend_count
+)
+"""
+
+            self.cursor.execute(sql)
+            resend_results = self.cursor.fetchall()
+            # print(resend_results)
+            if (len(resend_results) > 0):
+                self.logger.info("Found %d files to re-send as requested via PPA" % (len(resend_results)))
+
+            results.extend(resend_results)
 
         self.lock.release()
 
@@ -184,5 +214,5 @@ if __name__ == "__main__":
             print("")
             print("#####  exp-id  ___________________OBSID   ........................... file-location ...........................")
             print("")
-        (id,exposure,path) = e
+        (id,exposure,path,extra) = e
         print("%5d: %6d %25s   %s" % (n+1,id,exposure,path))
