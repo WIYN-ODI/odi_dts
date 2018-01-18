@@ -101,7 +101,7 @@ class PPA (object): #listener.Listener):
             'comment': comment
         })
 
-        return self.send_message("instrument.ralftest", msg)
+        return self.send_message("instrument.outgoing", msg)
 
 
     def close(self):
