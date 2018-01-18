@@ -48,6 +48,16 @@ def parse():
         help="Re-send files even though they might be marked as complete already"
     )
 
+    parser.add_argument(
+        "--verbose", default=False, action="store_true",
+        help="Print still-alive time-stamp to terminal"
+    )
+
+    parser.add_argument(
+        "--special", default="",
+        help="special keyword for developer only"
+    )
+
     args = parser.parse_args()
 
     return args
