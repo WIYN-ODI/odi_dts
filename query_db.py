@@ -71,23 +71,35 @@ class ODIDB(object):
 
         if (include_resends):
             # print("Checking for files that need re-sending")
+
+
+            # query multiple re-send attempts
+#             sql = """\
+# select exp.id, exp.exposure,exp.fileaddr,'resend' as extra
+# from exposures exp where exp.id in (
+#     select req.req_expid from (
+#         select expid as req_expid,count(expid) as resend_requests from exposure_event
+#         where event like 'ppa request resend%'
+#         group by expid
+#         ) REQ
+#     JOIN (SElect expid,count(expid) as resend_count from exposure_event
+#         where event like 'pyDTS resend%'
+#         group by expid
+#         ) comp
+#     on req.req_expid = comp.expid
+#     where req.resend_requests>comp.resend_count
+# )
+# """
+
             sql = """\
 select exp.id, exp.exposure,exp.fileaddr,'resend' as extra 
 from exposures exp where exp.id in (
-    select req.req_expid from (
-        select expid as req_expid,count(expid) as resend_requests from exposure_event
-        where event like 'ppa request resend%'
-        group by expid
-        ) REQ
-    JOIN (SElect expid,count(expid) as resend_count from exposure_event
-        where event like 'pyDTS resend%'
-        group by expid
-        ) comp
-    on req.req_expid = comp.expid
-    where req.resend_requests>comp.resend_count
-)
-"""
-
+select expid from (select expid,
+sum(case when event like 'ppa request resend%' then 1 else 0 end) as attempts,
+sum(case when event like 'pyDTS resend%' then 1 else 0 end) as completed
+from exposure_event
+group by expid) where attempts > completed)
+            """
             self.cursor.execute(sql)
             resend_results = self.cursor.fetchall()
             # print(resend_results)
@@ -119,16 +131,21 @@ from exposures exp where exp.id in (
         return results
 
 
-    def mark_exposure_archived(self, obsid, event=None, dryrun=False):
-
-        self.lock.acquire() #blocking=True)
-        print("Adding completion report to EXPOSURE_EVENT table")
-        # convert obsid into expid
+    def exposureid_from_obsid(self, obsid):
         sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE LIKE '%%%s'" % (obsid)
         # print(sql)
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
         exposure_id = results[0][0]
+        return exposure_id
+
+    def mark_exposure_archived(self, obsid, event=None, dryrun=False):
+
+        self.lock.acquire() #blocking=True)
+        print("Adding completion report to EXPOSURE_EVENT table")
+        exposure_id = self.exposureid_from_obsid(obsid)
+
+        # convert obsid into expid
         # print("EXPOSURE_ID=",results, exposure_id)
 
         # start a sequence to auto-increment the ID value
@@ -185,6 +202,37 @@ from exposures exp where exp.id in (
             ))
         # print(results)
         return results[0][0]
+
+    def request_exposure_resend(self, obsid, timestamp=None, reason=None, dryrun=False):
+
+        if (timestamp is None):
+            timestamp = datetime.datetime.now()
+
+        if (reason is None):
+            event = "ppa request resend (%s)" % (obsid)
+        else:
+            event = "ppa request resend (%s: %s)" % (obsid, reason)
+
+        # get exposure-id from OBS-ID
+        exposure_id = self.exposureid_from_obsid(obsid)
+        if (exposure_id is None):
+            # TODO: report error back to PPA
+            self.logger.critical("Unable to get exposure ID from OBSID %s" % (obsid))
+            return False
+
+        sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES (EXP_EVENTID.nextval, :expid, :eventtime, :event)"
+
+        values = {'expid': exposure_id, 'eventtime':timestamp, 'event':event}
+        # print(sql)
+        # print(values)
+        # self.cursor.execute(sql, values)
+        if (not dryrun):
+            self.cursor.prepare(sql)
+            self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
+            self.cursor.execute(None, values)
+            self.connection.commit()
+        else:
+            self.logger.info("DRYRUN: %s" % (sql))
 
 
     def close(self):
