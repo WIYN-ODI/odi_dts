@@ -71,11 +71,16 @@ class ODIDB(object):
         return results
 
 
-    def check_for_exposures(self, last_id):
+    def check_for_exposures(self):
         self.lock.acquire()
         # sql = "SELECT ID,CREATETIME,EXPOSURE FROM EXPOSURES WHERE ID > %d" % (last_id)
 
-        sql = """select ID,CREATETIME,EXPOSURE from exposures exp where exp.id not in (select expid from exposure_event where event like 'ppa notification OK%') order by exp.createtime  desc
+        sql = """\
+        select ID,CREATETIME,EXPOSURE 
+        from exposures exp where exp.id not in (
+          select expid from exposure_event where event like 'ppa notification OK%'
+          ) 
+        order by exp.createtime  desc
         """
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
@@ -152,9 +157,17 @@ class ODIDB(object):
         return results[0][0]
 
 
+    def close(self):
+        #print ("Closing connection to ODI database")
+        if (self.cursor is not None):
+            self.cursor.close()
+            self.cursor = None
+        if (self.connection is not None):
+            self.connection.close()
+            self.connection = None
+
     def __del__(self):
-        self.cursor.close()
-        self.connection.close()
+        self.close()
 
 
 
