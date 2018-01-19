@@ -132,11 +132,13 @@ group by expid) where attempts > completed)
 
 
     def exposureid_from_obsid(self, obsid):
+
         sql = "SELECT ID FROM EXPOSURES WHERE EXPOSURE LIKE '%%%s'" % (obsid)
         # print(sql)
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
         exposure_id = results[0][0]
+
         return exposure_id
 
     def mark_exposure_archived(self, obsid, event=None, dryrun=False):
@@ -192,6 +194,7 @@ group by expid) where attempts > completed)
         return
 
     def get_directory_from_obsid(self, obsid):
+
         sql = "SELECT FILEADDR FROM EXPOSURES WHERE EXPOSURE='%s'" % (obsid)
         # print(sql)
         self.cursor.execute(sql)
