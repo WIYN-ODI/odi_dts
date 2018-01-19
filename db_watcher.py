@@ -82,7 +82,7 @@ class ExposureWatcher(threading.Thread):
         while (not self.shutdown):
 
             new_exposures = self.odidb.check_for_exposures()
-
+            # self.logger.info("Checking for newly observed exposures")
             if (len(new_exposures) > 0):
                 self.logger.info("Found %d new exposure%s to report to PPA" % (len(new_exposures), "" if len(new_exposures) == 1 else "s"))
                 for exp in new_exposures:
@@ -109,7 +109,7 @@ class ExposureWatcher(threading.Thread):
             # print("Waiting for new exposures....")
 
 
-            pause = 0
+            pause = 0.
             while (pause < self.args.checkevery and not self.shutdown):
                 time.sleep(0.01)
                 pause += 0.01
