@@ -5,10 +5,10 @@ import json
 
 import query_db
 
-LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
-              '-35s %(lineno) -5d: %(message)s')
-LOGGER = logging.getLogger("ResendRequestHandler")
-
+# LOG_FORMAT = ('%(levelname) -10s %(asctime)s %(name) -30s %(funcName) '
+#               '-35s %(lineno) -5d: %(message)s')
+# LOGGER = logging.getLogger("ResendRequestHandler")
+#
 
 class ExposureResendHandler(object):
     """This is an example consumer that will handle unexpected interactions
@@ -61,7 +61,8 @@ class ExposureResendHandler(object):
             credentials=self.credentials,
         )
 
-
+        self.logger = logging.getLogger("ResendRequestHandler")
+        self.logger.setLevel(logging.INFO)
 
     def connect(self):
         """This method connects to RabbitMQ, returning the connection handle.
@@ -71,7 +72,7 @@ class ExposureResendHandler(object):
         :rtype: pika.SelectConnection
 
         """
-        LOGGER.debug('Connecting to %s', self._url)
+        self.logger.debug('Connecting to %s', self._url)
         return pika.SelectConnection(self.parameters, #pika.URLParameters(self._url),
                                      self.on_connection_open,
                                      stop_ioloop_on_close=False)
@@ -84,7 +85,7 @@ class ExposureResendHandler(object):
         :type unused_connection: pika.SelectConnection
 
         """
-        LOGGER.debug('Connection opened')
+        self.logger.debug('Connection opened')
         self.add_on_connection_close_callback()
         self.open_channel()
 
@@ -93,7 +94,7 @@ class ExposureResendHandler(object):
         when RabbitMQ closes the connection to the publisher unexpectedly.
 
         """
-        LOGGER.debug('Adding connection close callback')
+        self.logger.debug('Adding connection close callback')
         self._connection.add_on_close_callback(self.on_connection_closed)
 
     def on_connection_closed(self, connection, reply_code, reply_text):
@@ -110,7 +111,7 @@ class ExposureResendHandler(object):
         if self._closing:
             self._connection.ioloop.stop()
         else:
-            LOGGER.warning('Connection closed, reopening in 5 seconds: (%s) %s',
+            self.logger.warning('Connection closed, reopening in 5 seconds: (%s) %s',
                            reply_code, reply_text)
             self._connection.add_timeout(5, self.reconnect)
 
@@ -136,7 +137,7 @@ class ExposureResendHandler(object):
         on_channel_open callback will be invoked by pika.
 
         """
-        LOGGER.debug('Creating a new channel')
+        self.logger.debug('Creating a new channel')
         self._connection.channel(on_open_callback=self.on_channel_open)
 
     def on_channel_open(self, channel):
@@ -148,7 +149,7 @@ class ExposureResendHandler(object):
         :param pika.channel.Channel channel: The channel object
 
         """
-        LOGGER.debug('Channel opened')
+        self.logger.debug('Channel opened')
         self._channel = channel
         self.add_on_channel_close_callback()
         #self.setup_exchange(self.EXCHANGE)
@@ -159,7 +160,7 @@ class ExposureResendHandler(object):
         RabbitMQ unexpectedly closes the channel.
 
         """
-        LOGGER.debug('Adding channel close callback')
+        self.logger.debug('Adding channel close callback')
         self._channel.add_on_close_callback(self.on_channel_closed)
 
     def on_channel_closed(self, channel, reply_code, reply_text):
@@ -174,7 +175,7 @@ class ExposureResendHandler(object):
         :param str reply_text: The text reason the channel was closed
 
         """
-        LOGGER.warning('Channel %i was closed: (%s) %s',
+        self.logger.warning('Channel %i was closed: (%s) %s',
                        channel, reply_code, reply_text)
         self._connection.close()
 
@@ -186,7 +187,7 @@ class ExposureResendHandler(object):
         :param str|unicode exchange_name: The name of the exchange to declare
 
         """
-        LOGGER.debug('Declaring exchange %s', exchange_name)
+        self.logger.debug('Declaring exchange %s', exchange_name)
         self._channel.exchange_declare(self.on_exchange_declareok,
                                        exchange_name,
                                        self.EXCHANGE_TYPE)
@@ -198,7 +199,7 @@ class ExposureResendHandler(object):
         :param pika.Frame.Method unused_frame: Exchange.DeclareOk response frame
 
         """
-        LOGGER.debug('Exchange declared')
+        self.logger.debug('Exchange declared')
         self.setup_queue(self.QUEUE)
 
     def setup_queue(self, queue_name):
@@ -209,12 +210,12 @@ class ExposureResendHandler(object):
         :param str|unicode queue_name: The name of the queue to declare.
 
         """
-        LOGGER.debug('Declaring queue %s', queue_name)
+        self.logger.debug('Declaring queue %s', queue_name)
         # self._channel.queue_declare(self.on_queue_declareok, queue_name,
         #                             durable=True)
         self._channel.queue_declare(self.on_bindok,
             queue=queue_name, durable=True)
-        LOGGER.debug('done Declaring queue %s', queue_name)
+        self.logger.debug('done Declaring queue %s', queue_name)
 
 
     def on_queue_declareok(self, method_frame):
@@ -227,7 +228,7 @@ class ExposureResendHandler(object):
         :param pika.frame.Method method_frame: The Queue.DeclareOk frame
 
         """
-        LOGGER.debug('Binding %s to %s with %s',
+        self.logger.debug('Binding %s to %s with %s',
                     self.EXCHANGE, self.QUEUE, self.ROUTING_KEY)
         self._channel.queue_bind(self.on_bindok, self.QUEUE,
                                  self.EXCHANGE, self.ROUTING_KEY)
@@ -240,7 +241,7 @@ class ExposureResendHandler(object):
         :param pika.frame.Method unused_frame: The Queue.BindOk response frame
 
         """
-        LOGGER.debug('Queue bound')
+        self.logger.debug('Queue bound')
         self.start_consuming()
 
     def start_consuming(self):
@@ -253,7 +254,8 @@ class ExposureResendHandler(object):
         will invoke when a message is fully received.
 
         """
-        LOGGER.debug('Issuing consumer related RPC commands')
+        self.logger.debug('Issuing consumer related RPC commands')
+        self.logger.info("Starting to receive resend-requests from PPA")
         self.add_on_cancel_callback()
         self._consumer_tag = self._channel.basic_consume(self.on_message,
                                                          self.QUEUE)
@@ -264,7 +266,7 @@ class ExposureResendHandler(object):
         on_consumer_cancelled will be invoked by pika.
 
         """
-        LOGGER.debug('Adding consumer cancellation callback')
+        self.logger.debug('Adding consumer cancellation callback')
         self._channel.add_on_cancel_callback(self.on_consumer_cancelled)
 
     def on_consumer_cancelled(self, method_frame):
@@ -274,7 +276,7 @@ class ExposureResendHandler(object):
         :param pika.frame.Method method_frame: The Basic.Cancel frame
 
         """
-        LOGGER.debug('Consumer was cancelled remotely, shutting down: %r',
+        self.logger.debug('Consumer was cancelled remotely, shutting down: %r',
                     method_frame)
         if self._channel:
             self._channel.close()
@@ -293,7 +295,7 @@ class ExposureResendHandler(object):
         :param str|unicode body: The message body
 
         """
-        LOGGER.debug('Received message # %s from %s: %s',
+        self.logger.debug('Received message # %s from %s: %s',
                     basic_deliver.delivery_tag, properties.app_id, body)
 
         msg_data = json.loads(body)
@@ -302,7 +304,7 @@ class ExposureResendHandler(object):
         self.odidb.request_exposure_resend(
             obsid=str(msg_data['id'])
         )
-        LOGGER.info("Marking exposure for re-sending")
+        self.logger.info("Marking exposure for re-sending")
         #self.odidb.request_exposure_resend()
         self.acknowledge_message(basic_deliver.delivery_tag)
 
@@ -313,7 +315,7 @@ class ExposureResendHandler(object):
         :param int delivery_tag: The delivery tag from the Basic.Deliver frame
 
         """
-        LOGGER.debug('Acknowledging message %s', delivery_tag)
+        self.logger.debug('Acknowledging message %s', delivery_tag)
         self._channel.basic_ack(delivery_tag)
 
     def stop_consuming(self):
@@ -322,7 +324,7 @@ class ExposureResendHandler(object):
 
         """
         if self._channel:
-            LOGGER.debug('Sending a Basic.Cancel RPC command to RabbitMQ')
+            self.logger.debug('Sending a Basic.Cancel RPC command to RabbitMQ')
             self._channel.basic_cancel(self.on_cancelok, self._consumer_tag)
 
     def on_cancelok(self, unused_frame):
@@ -334,7 +336,7 @@ class ExposureResendHandler(object):
         :param pika.frame.Method unused_frame: The Basic.CancelOk frame
 
         """
-        LOGGER.debug('RabbitMQ acknowledged the cancellation of the consumer')
+        self.logger.debug('RabbitMQ acknowledged the cancellation of the consumer')
         self.close_channel()
 
     def close_channel(self):
@@ -342,7 +344,7 @@ class ExposureResendHandler(object):
         Channel.Close RPC command.
 
         """
-        LOGGER.debug('Closing the channel')
+        self.logger.debug('Closing the channel')
         self._channel.close()
 
     def run(self):
@@ -364,15 +366,15 @@ class ExposureResendHandler(object):
         the IOLoop will be buffered but not processed.
 
         """
-        LOGGER.debug('Stopping')
+        self.logger.debug('Stopping')
         self._closing = True
         self.stop_consuming()
         self._connection.ioloop.start()
-        LOGGER.debug('Stopped')
+        self.logger.debug('Stopped')
 
     def close_connection(self):
         """This method closes the connection to RabbitMQ."""
-        LOGGER.debug('Closing connection')
+        self.logger.debug('Closing connection')
         self._connection.close()
 
 
