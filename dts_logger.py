@@ -59,6 +59,7 @@ class DTS_LogHandler(threading.Thread):
 
         # Add the stream handler to write to both terminal and logfile
         self.logger = logging.getLogger("DTS")
+        self.logger.setLevel(logging.INFO)
         # debug_logger = logging.getLogger()
         try:
             file_handler = logging.StreamHandler(stream=self.log)
