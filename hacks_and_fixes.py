@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     if (args.special == "fix_old"):
         older_than = args.timeframe
-        current = datetime.datetime.now()
+        current = datetime.datetime.utcnow()
         old_cutoff = current - datetime.timedelta(days=older_than)
 
         exp = odidb.check_for_exposures()

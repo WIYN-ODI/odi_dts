@@ -88,7 +88,7 @@ class PPA (object): #listener.Listener):
     def report_exposure(self, obsid, msg_type, timestamp=None, comment=None):
 
         if (timestamp is None):
-            timestamp = datetime.datetime.now()
+            timestamp = datetime.datetime.utcnow()
         if (comment is None):
             comment = ""
 
@@ -122,7 +122,7 @@ if __name__ == "__main__":
     ppa = PPA()
 
     msg = json.dumps({
-        'time': str(datetime.datetime.now()),
+        'time': str(datetime.datetime.utcnow()),
         'id': 'o20180111T123456.1',
         'source': 'instrument',
         'destination': 'ppa',

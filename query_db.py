@@ -37,7 +37,7 @@ class ODIDB(object):
 
         self.lock.acquire() #blocking=True
 
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
         delta_t = datetime.timedelta(days=timeframe)
         cutoff_time = now - delta_t
 
@@ -164,7 +164,7 @@ group by expid) where attempts > completed)
         # print("MAX(ID)=",self.cursor.fetchall())
 
         # get time-stamp
-        event_time = datetime.datetime.now()
+        event_time = datetime.datetime.utcnow()
         # print(event_time)
 
 
@@ -209,7 +209,7 @@ group by expid) where attempts > completed)
     def request_exposure_resend(self, obsid, timestamp=None, reason=None, dryrun=False):
 
         if (timestamp is None):
-            timestamp = datetime.datetime.now()
+            timestamp = datetime.datetime.utcnow()
 
         if (reason is None):
             event = "ppa request resend (%s)" % (obsid)
