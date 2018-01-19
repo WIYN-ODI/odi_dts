@@ -15,8 +15,9 @@ import query_db
 import dts_logger
 import config
 import commandline
-import ppa_communication
 import db_watcher
+import ppa_resend_request_listener
+import ppa_sender
 
 class DTS_Thread(threading.Thread):
     """Threaded Url Grab"""
@@ -230,7 +231,9 @@ if __name__ == "__main__":
     dtslog = dts_logger.dts_logging()
 
     odidb = query_db.ODIDB()
-    ppa = ppa_communication.PPA()
+    ppa = ppa_sender.PPA_Sender()
+    ppa.start()
+
     logger = logging.getLogger("ODI-DTS")
 
     # make sure to create the DTS scratch directory
@@ -254,15 +257,22 @@ if __name__ == "__main__":
     watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=odidb, args=args)
     watcher.start()
 
+    resend_request_handler = ppa_resend_request_listener.ExposureResendHandler(
+        odidb=odidb,
+    )
+    resend_request_handler.run()
+
+
     #
     # Now wait for the command to shut-down
     #
     while (True):
         try:
-            time.sleep(1)
+            time.sleep(100)
         except (SystemExit, KeyboardInterrupt):
             watcher.shutdown = True
             sender.shutdown = True
+            resend_request_handler.stop()
             print("\rOrdering sender and watcher to shutdown")
             break
             #time.sleep(1)
