@@ -273,6 +273,7 @@ if __name__ == "__main__":
             watcher.shutdown = True
             sender.shutdown = True
             resend_request_handler.stop()
+            ppa.shutdown()
             print("\rOrdering sender and watcher to shutdown")
             break
             #time.sleep(1)
