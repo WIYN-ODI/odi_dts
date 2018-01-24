@@ -164,7 +164,10 @@ group by expid) where attempts > completed)
         # print("MAX(ID)=",self.cursor.fetchall())
 
         # get time-stamp
-        event_time = datetime.datetime.utcnow()
+        # unlike most other cases, this timestamp better be local mountain
+        # time to make the event-time in the database correlate better with
+        # IDs in the database.
+        event_time = datetime.datetime.now()
         # print(event_time)
 
 
