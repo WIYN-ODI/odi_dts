@@ -191,7 +191,7 @@ class _PPAsender(object):
         :param str reply_text: The text reason the channel was closed
 
         """
-        LOGGER.warning('Channel was closed: (%s) %s', reply_code, reply_text)
+        self.logger.warning('Channel was closed: (%s) %s', reply_code, reply_text)
         if not self._closing:
             self._connection.close()
 
