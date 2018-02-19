@@ -78,7 +78,7 @@ class ExposureWatcher(threading.Thread):
 
     def run(self):
 
-        self.logger.info("Starting up the new exposure PPA notifier")
+        self.logger.info("Starting up the new exposure PPA notifier (update every %.2f seconds)" % (self.args.newexp_poll))
         while (not self.shutdown):
 
             new_exposures = self.odidb.check_for_exposures()
@@ -110,7 +110,7 @@ class ExposureWatcher(threading.Thread):
 
 
             pause = 0.
-            while (pause < self.args.checkevery and not self.shutdown):
+            while (pause < self.args.newexp_poll and not self.shutdown):
                 time.sleep(0.01)
                 pause += 0.01
             # if (self.shutdown):

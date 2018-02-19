@@ -40,6 +40,10 @@ def parse():
         help="Pause between database checks when no new exposures were found")
 
     parser.add_argument(
+        "--newexp_poll", default=0.5, type=float,
+        help="Pause between database checks when no new exposures were found")
+
+    parser.add_argument(
         "--timeframe", default=7, type=float,
         help="time-scale in days to search for exposures to transfer (e.g 7 means all exposures taken during past 7 days)")
 
