@@ -233,6 +233,7 @@ if __name__ == "__main__":
     odidb = query_db.ODIDB()
     ppa = ppa_sender.PPA_Sender()
     ppa.start()
+    time.sleep(1)
 
     logger = logging.getLogger("ODI-DTS")
 
@@ -253,9 +254,11 @@ if __name__ == "__main__":
     # Start the exposure-sender thread
     sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
     sender.start()
+    time.sleep(1)
 
     watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=odidb, args=args)
     watcher.start()
+    time.sleep(1)
 
     resend_request_handler = ppa_resend_request_listener.ExposureResendHandler(
         odidb=odidb,

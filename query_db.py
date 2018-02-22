@@ -28,6 +28,7 @@ class ODIDB(object):
         self.cursor = self.connection.cursor()
 
         self.logger = logging.getLogger("ODI-DB")
+        self.logger.info("Connection established!")
 
         self.lock = threading.Lock()
 
