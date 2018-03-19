@@ -413,7 +413,7 @@ class PPA_Sender(threading.Thread):
     def report_exposure(self, obsid, msg_type, timestamp=None, comment=None):
 
         if (timestamp is None):
-            timestamp = datetime.datetime.utcnow()
+            timestamp = datetime.datetime.now()
         if (comment is None):
             comment = ""
 

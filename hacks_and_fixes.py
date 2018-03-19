@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     if (args.special == "fix_old"):
         older_than = args.timeframe
-        current = datetime.datetime.utcnow()
+        current = datetime.datetime.now()
         old_cutoff = current - datetime.timedelta(days=older_than)
 
         exp = odidb.check_for_exposures()
@@ -67,7 +67,7 @@ if __name__ == "__main__":
             #print(transfer_time)
 
             # now we have a send-start and send-complete timestamp
-            send_start = eventtime - datetime.timedelta(seconds=transfer_time+20)
+            send_start = eventtime - datetime.timedelta(seconds=transfer_time)
             send_end = eventtime
 
             print("Sending -->create<-- to PPA")

@@ -165,7 +165,7 @@ class DTS_ExposureSender(threading.Thread):
                     sys.stdout.write(
                         #"\nNo files to transfer at %s, checking again soon\033[F" % (
                         "No files to transfer at %s, checking again soon\n" % (
-                        str(datetime.datetime.utcnow())))
+                        str(datetime.datetime.now())))
                     sys.stdout.flush()
                 delay = 0
                 while (delay < self.args.checkevery and not self.shutdown):
