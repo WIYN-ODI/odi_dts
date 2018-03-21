@@ -46,6 +46,8 @@ class ExposureWatcher(threading.Thread):
         threading.Thread.__init__(self)
         self.setDaemon(True)
 
+        if (db_connection is None):
+            db_connection = query_db.ODIDB()
         self.ppa_comm = ppa_comm
         self.odidb = db_connection
         self.args = args

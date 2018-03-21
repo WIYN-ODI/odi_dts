@@ -138,6 +138,8 @@ class DTS_ExposureSender(threading.Thread):
     def __init__(self, odidb, ppa, args):
         threading.Thread.__init__(self)
 
+        if (odidb is None):
+            odidb = query_db.ODIDB()
         self.odidb = odidb
         self.ppa = ppa
         self.dts_queue = queue.Queue()
@@ -230,12 +232,11 @@ if __name__ == "__main__":
     # setup logging
     dtslog = dts_logger.dts_logging()
 
-    odidb = query_db.ODIDB()
+    logger = logging.getLogger("ODI-DTS")
+
     ppa = ppa_sender.PPA_Sender()
     ppa.start()
     time.sleep(1)
-
-    logger = logging.getLogger("ODI-DTS")
 
     # make sure to create the DTS scratch directory
     if (not os.path.isdir(config.tar_scratchdir)):
@@ -243,6 +244,7 @@ if __name__ == "__main__":
 
     if (not args.db or not args.monitor):
         # This is just a one-time transfer
+        odidb = query_db.ODIDB()
         transfer_onetime(odidb=odidb, ppa=ppa, args=args)
         sys.exit(0)
 
@@ -251,17 +253,19 @@ if __name__ == "__main__":
     # Checking the database for new exposures on a regular basis
     #
 
+
     # Start the exposure-sender thread
-    sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
+    # sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
+    sender = DTS_ExposureSender(odidb=None, ppa=ppa, args=args)
     sender.start()
     time.sleep(1)
 
-    watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=odidb, args=args)
+    watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=None, args=args)
     watcher.start()
     time.sleep(1)
 
     resend_request_handler = ppa_resend_request_listener.ExposureResendHandler(
-        odidb=odidb,
+        odidb=None,
     )
     resend_request_handler.run()
 
@@ -282,7 +286,7 @@ if __name__ == "__main__":
             #time.sleep(1)
 
     print("Shutting down connections to ODI database and PPA")
-    odidb.close()
+    # odidb.close()
     ppa.close()
 
     print("All done - have a nice day!")
