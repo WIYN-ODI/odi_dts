@@ -111,15 +111,15 @@ if __name__ == "__main__":
         select v.eventtime,v.event,e.exposure 
         from exposure_event v 
         join exposures e on e.id=v.expid 
-        where v.event like 'pyDTS%OK :: 0'
+        where v.event like 'pyDTS%OK :: 0' AND v.eventtime > :cutoff
         """
         cutoff_time = datetime.datetime.now() - datetime.timedelta(days=args.timeframe)
 
-        # self.cursor.prepare(sql)
-        # self.cursor.setinputsizes(cutoff=cx_Oracle.TIMESTAMP)
-        # self.cursor.execute(None, {'cutoff': cutoff_time,})
+        odidb.cursor.prepare(sql)
+        odidb.cursor.setinputsizes(cutoff=cx_Oracle.TIMESTAMP)
+        odidb.cursor.execute(None, {'cutoff': cutoff_time,})
         #self.cursor.execute(sql)
-        odidb.cursor.execute(sql)
+        #odidb.cursor.execute(sql)
         results = odidb.cursor.fetchall()
 
         for eventtime,event,obsid in results:
