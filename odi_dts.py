@@ -232,12 +232,11 @@ if __name__ == "__main__":
     # setup logging
     dtslog = dts_logger.dts_logging()
 
-    odidb = query_db.ODIDB()
+    logger = logging.getLogger("ODI-DTS")
+
     ppa = ppa_sender.PPA_Sender()
     ppa.start()
     time.sleep(1)
-
-    logger = logging.getLogger("ODI-DTS")
 
     # make sure to create the DTS scratch directory
     if (not os.path.isdir(config.tar_scratchdir)):
@@ -245,6 +244,7 @@ if __name__ == "__main__":
 
     if (not args.db or not args.monitor):
         # This is just a one-time transfer
+        odidb = query_db.ODIDB()
         transfer_onetime(odidb=odidb, ppa=ppa, args=args)
         sys.exit(0)
 
@@ -252,6 +252,7 @@ if __name__ == "__main__":
     # Coming up is the default way of running DTS:
     # Checking the database for new exposures on a regular basis
     #
+
 
     # Start the exposure-sender thread
     # sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
@@ -285,7 +286,7 @@ if __name__ == "__main__":
             #time.sleep(1)
 
     print("Shutting down connections to ODI database and PPA")
-    odidb.close()
+    # odidb.close()
     ppa.close()
 
     print("All done - have a nice day!")

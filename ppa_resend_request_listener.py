@@ -36,8 +36,10 @@ class ExposureResendHandler(object):
 
         """
 
+        self.private_db = False
         if (odidb is None):
             odidb = query_db.ODIDB()
+            self.private_db = True
         self.odidb = odidb
 
         self._connection = None
