@@ -138,6 +138,8 @@ class DTS_ExposureSender(threading.Thread):
     def __init__(self, odidb, ppa, args):
         threading.Thread.__init__(self)
 
+        if (odidb is None):
+            odidb = query_db.ODIDB()
         self.odidb = odidb
         self.ppa = ppa
         self.dts_queue = queue.Queue()
@@ -252,16 +254,17 @@ if __name__ == "__main__":
     #
 
     # Start the exposure-sender thread
-    sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
+    # sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
+    sender = DTS_ExposureSender(odidb=None, ppa=ppa, args=args)
     sender.start()
     time.sleep(1)
 
-    watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=odidb, args=args)
+    watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=None, args=args)
     watcher.start()
     time.sleep(1)
 
     resend_request_handler = ppa_resend_request_listener.ExposureResendHandler(
-        odidb=odidb,
+        odidb=None,
     )
     resend_request_handler.run()
 
