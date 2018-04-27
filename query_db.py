@@ -56,9 +56,11 @@ class ODIDB(object):
     (
     SELECT  expid
     FROM    EXPOSURE_EVENT
-    WHERE event like '%:: 0%' OR 
-          event like 'ppa ingested OK%' OR
-          event like 'pyDTS%ERROR%'
+    WHERE (event like '%:: 0%' OR 
+           event like 'ppa ingested OK%' OR
+           event like 'pyDTS%ERROR%') AND NOT (
+           event like 'tar cf%' OR
+           event like '/home/dts/bin/dtsq')
     )
     ORDER BY exp.id DESC
     """
