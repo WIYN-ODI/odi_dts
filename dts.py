@@ -220,7 +220,9 @@ class DTS ( object ):
         self.cleanup_filelist.append(md5_filename)
 
         # Now create the actual tar ball
-        self.logger.info("Making tar ball (%s)" % (self.tar_filename))
+        file_glob = os.path.join(os.path.join(self.scratch_dir, self.dir_name), "*")
+        n_files = len(glob.glob(file_glob))
+        self.logger.info("Making tar ball (%s) from %d files (%s)" % (self.tar_filename, n_files, file_glob))
         tar_cmd = "tar --create --seek --file=%s --directory=%s %s" % (
             self.tar_filename, self.scratch_dir, self.dir_name)
         # print(tar_cmd)
