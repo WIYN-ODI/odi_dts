@@ -139,6 +139,10 @@ class DTS ( object ):
         wildcards = os.path.join(self.exposure_directory, "*.fits")
         fits_files = glob.glob(wildcards)
         for ff in fits_files:
+            filesize = os.path.getsize(ff)
+            if (filesize <= 0):
+                self.logger.warning("Detected (and skipped) empty file: %s" % (ff))
+                continue
             _,bn = os.path.split(os.path.abspath(ff))
             self.filelist.append([os.path.abspath(ff), bn+".fz", True, True])
 
@@ -147,6 +151,10 @@ class DTS ( object ):
             os.path.join(os.path.join(self.exposure_directory, "expVideo"), "*.fits")
         )
         for ff in expvideo_files:
+            filesize = os.path.getsize(ff)
+            if (filesize <= 0):
+                self.logger.warning("Detected (and skipped) empty file: %s" % (ff))
+                continue
             _, bn = os.path.split(os.path.abspath(ff))
             self.filelist.append([os.path.abspath(ff), os.path.join("expVideo", bn)+".fz", True, True])
 
