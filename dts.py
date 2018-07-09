@@ -121,6 +121,8 @@ class DTS ( object ):
         elif (tar_file_count == 0):
             # this means there are no files to transfer
             self.logger.warning("There are no files to transfer, marking this frame as complete !!!")
+            self.register_transfer_complete()
+            all_steps_successful = True
         else:
             if (self.transfer_to_archive()):
                 if (self.report_new_file_to_archive()):
