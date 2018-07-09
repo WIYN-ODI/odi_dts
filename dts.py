@@ -326,8 +326,8 @@ class DTS ( object ):
                 (cmd_stdout, cmd_stderr) = ret.communicate()
                 if (ret.returncode != 0):
                     self.logger.warning("Command might have a problem, check the log")
-                    self.logger.debug("Stdout=\n"+cmd_stdout)
-                    self.logger.debug("Stderr=\n"+cmd_stderr)
+                    self.logger.debug("Stdout=\n"+str(cmd_stdout))
+                    self.logger.debug("Stderr=\n"+str(cmd_stderr))
 
         except OSError as e:
             self.logger.critical("Execution failed: %s" % (str(e)))
