@@ -121,6 +121,12 @@ class DTS ( object ):
                     self.logger.info("All successful")
                     all_steps_successful = True
                     self.ppa.report_exposure(obsid=self.obsid, msg_type=self.ppa_send_complete)
+                else:
+                    self.logger.error("reporting new exposure to PPA failed")
+            else:
+                self.logger.error("transfering to archive failed")
+        else:
+            self.logger.error("Creating tar-file failed")
         if (not all_steps_successful):
             self.mark_as_tried_and_failed()
             # TODO: ADD MORE INFO ABOUT ERROR
