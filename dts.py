@@ -114,7 +114,14 @@ class DTS ( object ):
     def archive(self):
         all_steps_successful = False
         self.ppa.report_exposure(obsid=self.obsid, msg_type=self.ppa_send,)
-        if (self.make_tar()):
+        tar_file_count = self.make_tar()
+        if (tar_file_count < 0):
+            self.mark_as_tried_and_failed()
+            self.logger.error("Creating tar-file failed")
+        elif (tar_file_count == 0):
+            # this means there are no files to transfer
+            self.logger.warning("There are no files to transfer, marking this frame as complete !!!")
+        else:
             if (self.transfer_to_archive()):
                 if (self.report_new_file_to_archive()):
                     self.register_transfer_complete()
@@ -125,8 +132,6 @@ class DTS ( object ):
                     self.logger.error("reporting new exposure to PPA failed")
             else:
                 self.logger.error("transfering to archive failed")
-        else:
-            self.logger.error("Creating tar-file failed")
         if (not all_steps_successful):
             self.mark_as_tried_and_failed()
             # TODO: ADD MORE INFO ABOUT ERROR
@@ -209,7 +214,7 @@ class DTS ( object ):
 
         if (len(md5_data) <= 0):
             # no data here
-            return False
+            return 0
 
         # create the md5.txt file
         md5_filename = os.path.join(os.path.join(self.scratch_dir, self.dir_name),
@@ -228,7 +233,7 @@ class DTS ( object ):
         # print(tar_cmd)
         returncode = self.execute(tar_cmd)
         if (returncode != 0):
-            return False
+            return -1
         #--remove-files
 
         self.tar_checksum = self.calculate_checksum(self.tar_filename)
@@ -236,7 +241,7 @@ class DTS ( object ):
         self.logger.info("Resulting tar-ball: %d bytes, MD5=%s" % (self.tar_filesize, self.tar_checksum))
         # print(self.tar_checksum)
 
-        return True
+        return n_files
 
     def fpack(self, filename, outfile):
         #_, basename = os.path.split(filename)
