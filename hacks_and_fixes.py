@@ -26,7 +26,10 @@ if __name__ == "__main__":
     dtslog = dts_logger.dts_logging()
     args = commandline.parse()
 
-    if (args.special == "fix_old"):
+    task = args.inputdir[0]
+    task_list = args.inputdir[1:]
+
+    if (task == "fix_old"):
         older_than = args.timeframe
         current = datetime.datetime.now()
         old_cutoff = current - datetime.timedelta(days=older_than)
@@ -43,7 +46,7 @@ if __name__ == "__main__":
 
         sys.exit(0)
 
-    elif (args.special == "mark_complete"):
+    elif (task == "mark_complete"):
 
         # exp = odidb.check_for_exposures()
         # for (id,time,obsid) in exp:
@@ -61,7 +64,26 @@ if __name__ == "__main__":
 
         sys.exit(0)
 
-    elif (args.special == "fix_backlog"):
+    elif (task == "mark_problem"):
+
+        # exp = odidb.check_for_exposures()
+        # for (id,time,obsid) in exp:
+        #     if (time < old_cutoff):
+
+        override_reason = args.special if args.special is not None else "not_specified"
+
+        for obsid in task_list:
+            print("Marking old exposure as reported to PPA: %s" % (obsid))
+            odidb.mark_exposure_problematic(
+                obsid=obsid,
+                event='pyDTS override: %s :: -99' % (override_reason),
+                dryrun=args.dryrun,
+                verbose=args.verbose,
+
+            )
+
+        sys.exit(0)
+    elif (task == "fix_backlog"):
 
         exp = odidb.check_for_exposures()
         for (id,createtime,obsid) in exp:
@@ -127,7 +149,7 @@ if __name__ == "__main__":
             #     )
         sys.exit(0)
 
-    elif (args.special == "fix_all_pyDTS"):
+    elif (task == "fix_all_pyDTS"):
 
         sql = """\
         select v.eventtime,v.event,e.exposure 
