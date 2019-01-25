@@ -10,6 +10,7 @@ import datetime
 import sys
 
 import ppa_communication
+import ppa_sender
 import query_db
 import dts_logger
 import commandline
@@ -18,7 +19,10 @@ import commandline
 if __name__ == "__main__":
 
     odidb = query_db.ODIDB()
-    ppa = ppa_communication.PPA()
+    # ppa = ppa_communication.PPA()
+    ppa = ppa_sender.PPA_Sender()
+    ppa.start()
+
     dtslog = dts_logger.dts_logging()
     args = commandline.parse()
 
@@ -36,6 +40,22 @@ if __name__ == "__main__":
                     event='ppa notification OK -- manually fixing old file for database only',
                     dryrun=args.verbose,
                 )
+
+        sys.exit(0)
+
+    elif (args.special == "mark_complete"):
+
+        # exp = odidb.check_for_exposures()
+        # for (id,time,obsid) in exp:
+        #     if (time < old_cutoff):
+
+        for obsid in args.inputdir:
+            print("Marking old exposure as reported to PPA: %s" % (obsid))
+            odidb.mark_exposure_archived(
+                obsid=obsid,
+                event='ppa notification OK -- manually fixing old file for database only',
+                dryrun=args.verbose,
+            )
 
         sys.exit(0)
 
