@@ -54,7 +54,9 @@ if __name__ == "__main__":
             odidb.mark_exposure_archived(
                 obsid=obsid,
                 event='ppa notification OK -- manually fixing old file for database only',
-                dryrun=args.verbose,
+                dryrun=args.dryrun,
+                verbose=args.verbose,
+
             )
 
         sys.exit(0)

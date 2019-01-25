@@ -58,6 +58,11 @@ def parse():
     )
 
     parser.add_argument(
+        "--dryrun", default=False, action="store_true",
+        help="dry-run only, do not actually do any work"
+    )
+
+   parser.add_argument(
         "--special", default="",
         help="special keyword for developer only"
     )
