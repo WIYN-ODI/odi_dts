@@ -330,6 +330,8 @@ class _PPAsender(object):
         """
         if self._stopping:
             return
+        if (self._channel is None):
+            self.reconnect()
 
         # message = {}
         properties = pika.BasicProperties(app_id='PPAsender',
