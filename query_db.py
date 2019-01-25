@@ -116,17 +116,28 @@ group by expid) where attempts > completed)
         return results
 
 
-    def check_for_exposures(self):
+    def check_for_exposures(self, include_problematic=False):
         self.lock.acquire()
         # sql = "SELECT ID,CREATETIME,EXPOSURE FROM EXPOSURES WHERE ID > %d" % (last_id)
 
-        sql = """\
-        select ID,CREATETIME,EXPOSURE 
-        from exposures exp where exp.id not in (
-          select expid from exposure_event where event like 'ppa notification OK%'
-          ) 
-        order by exp.createtime  desc
-        """
+        if (include_problematic):
+
+            sql = """\
+            select ID,CREATETIME,EXPOSURE 
+            from exposures exp where exp.id not in (
+              select expid from exposure_event where event like 'ppa notification OK%'
+              ) 
+            order by exp.createtime  desc
+            """
+        else:
+            sql = """\
+            select ID,CREATETIME,EXPOSURE 
+            from exposures exp where exp.id not in (
+              select expid from exposure_event where event like 'ppa notification OK%'
+              ) 
+            order by exp.createtime  desc
+            """
+
         self.cursor.execute(sql)
         results = self.cursor.fetchall()
         self.lock.release()
@@ -144,11 +155,15 @@ group by expid) where attempts > completed)
 
         return exposure_id
 
-    def mark_exposure_archived(self, obsid, event=None, dryrun=False):
+    def mark_exposure_archived(self, obsid, event=None, dryrun=False,
+                               verbose=False, file_problematic=False):
 
         self.lock.acquire() #blocking=True)
         print("Adding completion report to EXPOSURE_EVENT table")
         exposure_id = self.exposureid_from_obsid(obsid)
+
+        if (verbose):
+            print("exposure id = %s" % (exposure_id))
 
         # convert obsid into expid
         # print("EXPOSURE_ID=",results, exposure_id)
