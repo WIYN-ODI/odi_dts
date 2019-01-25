@@ -278,7 +278,8 @@ if __name__ == "__main__":
     db = ODIDB()
 
     args = commandline.parse()
-    exposures = db.query_exposures_for_transfer(timeframe=args.timeframe, all=True)
+    exposures = db.query_exposures_for_transfer(timeframe=args.timeframe, all=True,
+                                                include_resends=True)
 
     print("Found %d exposures to be transferred" % (len(exposures)))
     for n,e in enumerate(exposures): #((id,exposure,path) in exposures):
