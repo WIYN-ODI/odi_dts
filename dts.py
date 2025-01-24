@@ -171,8 +171,10 @@ class DTS ( object ):
             _, bn = os.path.split(os.path.abspath(ff))
             self.filelist.append([os.path.abspath(ff), os.path.join("expVideo", bn)+".fz", True, True])
 
-        # also include the metainf.xml
-        self.filelist.append([os.path.join(self.exposure_directory, "metainf.xml"), "metainf.xml", False, False])
+        metainf = os.path.join(self.exposure_directory, "metainf.xml")
+        if (os.path.isfile(metainf)):
+            # also include the metainf.xml
+            self.filelist.append([metainf, "metainf.xml", False, False])
 
         # print("\n".join(fits_files))
         # self.filelist = fits_files
@@ -264,7 +266,8 @@ class DTS ( object ):
         if (self.transfer_protocol == 'scp'):
             cmd = "scp %s %s" % (self.tar_filename, self.remote_target_directory)
         elif (self.transfer_protocol == 'rsync'):
-            cmd = "rsync -avu --progress %s %s" % (self.tar_filename, self.remote_target_directory)
+            cmd = "rsync -rvu --progress %s %s" % (self.tar_filename, self.remote_target_directory)
+            # cmd = "rsync -avu --progress %s %s" % (self.tar_filename, self.remote_target_directory)
         else:
             raise ValueError("Could not identfy which transfer protocal to use")
 
