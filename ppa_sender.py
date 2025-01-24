@@ -59,6 +59,7 @@ class _PPAsender(object):
         )
 
         self.logger = logging.getLogger("PPASender")
+        #self.logger.setLevel(logging.DEBUG)
         self.logger.setLevel(logging.INFO)
 
 
