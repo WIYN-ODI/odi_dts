@@ -5,6 +5,7 @@ import sys
 import subprocess
 import time
 import datetime
+import traceback
 
 import threading
 import queue
@@ -29,6 +30,7 @@ class DTS_Thread(threading.Thread):
         self.delete_when_done = delete_when_done
         self.logger = logging.getLogger("DTS")
         self.ppa = ppa
+        print("DTS_Thread init, database: " + str(database))
 
     def run(self):
         while(True):
@@ -48,6 +50,12 @@ class DTS_Thread(threading.Thread):
                                            ppa=self.ppa)
             except ValueError as v:
                 self.logger.error("ERROR starting DTS for OBSID %s in %s" % (obsid, dir))
+                print("------------------------------------")
+                print(v)
+                print("------------------------------------")
+                print("------------------------------------")
+                print(traceback.format_exc())
+                print("------------------------------------")
                 if (not os.path.isdir(dir) and obsid is not None):
                     # Directory is missing
                     # mark this exposure as problematic but done to avoid
@@ -58,6 +66,7 @@ class DTS_Thread(threading.Thread):
                     )
                     self.database.mark_exposure_archived(
                         obsid=obsid, event=event_report)
+                    # print("**** pyDTS ERROR %s: directory %s not found :: 0" % (obsid, dir))
 
             #signals to queue job is done
             self.queue.task_done()
@@ -156,10 +165,13 @@ class DTS_ExposureSender(threading.Thread):
             #
             # Check for new exposures
             #
+            self.logger.info("Checking for new exposures")
             exposures = self.odidb.query_exposures_for_transfer(
                 timeframe=self.args.timeframe,
                 include_resends=True
             )
+            self.logger.debug("Found %d exposures to send" % (len(exposures)))
+
             input_dirs = [(dir, obsid,extra) for (id, obsid, dir,extra) in exposures]
             if (len(input_dirs) <= 0):
                 # no new files to transfer have been found
@@ -256,10 +268,12 @@ if __name__ == "__main__":
 
     # Start the exposure-sender thread
     # sender = DTS_ExposureSender(odidb=odidb, ppa=ppa, args=args)
+    logger.info("Starting DTS_ExposureSender")
     sender = DTS_ExposureSender(odidb=None, ppa=ppa, args=args)
     sender.start()
     time.sleep(1)
 
+    logger.info("Starting ExposureWatcher")
     watcher = db_watcher.ExposureWatcher(ppa_comm=ppa, db_connection=None, args=args)
     watcher.start()
     time.sleep(1)
