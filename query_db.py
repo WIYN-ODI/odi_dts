@@ -289,6 +289,67 @@ group by expid) where attempts > completed)
         return
 
 
+    def mark_exposure_problematic(self, obsid, event=None, dryrun=False,
+                                verbose=False):
+
+        self.lock.acquire() #blocking=True)
+        print("Adding completion report to EXPOSURE_EVENT table")
+        exposure_id = self.exposureid_from_obsid(obsid)
+
+        if (verbose):
+            print("exposure id = %s" % (exposure_id))
+
+        # convert obsid into expid
+        # print("EXPOSURE_ID=",results, exposure_id)
+
+        # start a sequence to auto-increment the ID value
+        # try:
+        #     self.cursor.execute("CREATE SEQUENCE SEQ_EVENTID INCREMENT BY 1")
+        # except cx_Oracle.DatabaseError as e:
+        #     # most likely this means ORA-00955: name is already used by an existing object
+        #     # so we can safely ignore this
+        #     pass
+        # self.cursor.execute("SELECT SEQ_EVENTID.nextval FROM EXPOSURE_EVENT")
+        # print("SEQUENCE.nextval=",self.cursor.fetchone())
+
+        # self.cursor.execute("SELECT MAX(ID) FROM EXPOSURE_EVENT")
+        # print("MAX(ID)=",self.cursor.fetchall())
+
+        # get time-stamp
+        # unlike most other cases, this timestamp better be local mountain
+        # time to make the event-time in the database correlate better with
+        # IDs in the database.
+        event_time = datetime.datetime.now()
+        # print(event_time)
+
+
+        # now mark it as complete
+        if (event is None):
+            event = "pyDTS override: marking exposure as invalid/nonexistent/problematic :: -99"
+
+        # sql = "INSERT INTO EXPOSURE_EVENT (EXPID, EVENT) VALUES (:1, :2)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENT) VALUES (SEQ_EVENTID.next_val, :1, :2)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :1, :2, :3)"
+        # sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES ((SELECT MAX(ID) FROM EXPOSURE_EVENT)+1, :expid, :eventtime, :event)"
+        sql = "INSERT INTO EXPOSURE_EVENT (ID, EXPID, EVENTTIME, EVENT) VALUES (EXP_EVENTID.nextval, :expid, :eventtime, :event)"
+
+        values = {'expid': exposure_id, 'eventtime':event_time, 'event':event}
+        # print(sql)
+        # print(values)
+        # self.cursor.execute(sql, values)
+        if (not dryrun):
+            self.cursor.prepare(sql)
+            self.cursor.setinputsizes(eventtime=cx_Oracle.TIMESTAMP)
+            self.cursor.execute(None, values)
+            self.connection.commit()
+        else:
+            print("DRYRUN: %s (%s)" % (sql, str(values)))
+
+        self.lock.release()
+
+        return
+
+
 
     def get_directory_from_obsid(self, obsid):
 

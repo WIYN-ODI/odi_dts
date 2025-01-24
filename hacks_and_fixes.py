@@ -83,7 +83,7 @@ if __name__ == "__main__":
             )
 
         sys.exit(0)
-    elif (args.special == "fix_backlog"):
+    elif (task == "fix_backlog"):
 
         exp = odidb.check_for_exposures()
         for (id,createtime,obsid) in exp:
@@ -149,7 +149,7 @@ if __name__ == "__main__":
             #     )
         sys.exit(0)
 
-    elif (args.special == "fix_all_pyDTS"):
+    elif (task == "fix_all_pyDTS"):
 
         sql = """\
         select v.eventtime,v.event,e.exposure 
