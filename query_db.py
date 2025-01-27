@@ -412,17 +412,38 @@ group by expid) where attempts > completed)
 
 if __name__ == "__main__":
 
+    special_options = [
+        (['--check'], dict(dest='query_new', action='store_true', default=False, help="Query DB for new frames")),
+        (['--sql'], dict(dest='sql', type=str, help="execute the specified SQL statement and print results to stdout", default=None))
+        ]
+
+    args = commandline.parse(special_options)
+
     db = ODIDB()
 
-    args = commandline.parse()
-    exposures = db.query_exposures_for_transfer(timeframe=args.timeframe, all=True,
-                                                include_resends=True, verbose=True)
+    if (args.query_new):
 
-    print("Found %d exposures to be transferred" % (len(exposures)))
-    for n,e in enumerate(exposures): #((id,exposure,path) in exposures):
-        if (n%50 == 0):
-            print("")
-            print("#####  exp-id  ___________________OBSID   ........................... file-location ...........................")
-            print("")
-        (id,exposure,path,extra) = e
-        print("%5d: %6d %25s   %s" % (n+1,id,exposure,path))
+        exposures = db.query_exposures_for_transfer(timeframe=args.timeframe, all=True,
+                                                    include_resends=True, verbose=True)
+
+        print("Found %d exposures to be transferred" % (len(exposures)))
+        for n,e in enumerate(exposures): #((id,exposure,path) in exposures):
+            if (n%50 == 0):
+                print("")
+                print("#####  exp-id  ___________________OBSID   ........................... file-location ...........................")
+                print("")
+            (id,exposure,path,extra) = e
+            print("%5d: %6d %25s   %s" % (n+1,id,exposure,path))
+
+    elif (args.sql is not None):
+        sql = args.sql
+
+        db.lock.acquire()
+        db.cursor.execute(sql)
+        results = db.cursor.fetchall()
+        db.lock.release()
+        print(results)
+
+    else:
+        # Just checking
+        print("Checking database")
