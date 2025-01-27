@@ -441,6 +441,8 @@ if __name__ == "__main__":
         db.lock.acquire()
         db.cursor.execute(sql)
         results = db.cursor.fetchall()
+        for result in results:
+            print(result)
         db.lock.release()
         print(results)
 
