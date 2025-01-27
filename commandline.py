@@ -69,7 +69,7 @@ def parse(list_of_extras=None):
 
     if (list_of_extras is not None):
         for (args, kwargs) in list_of_extras:
-            print(args, kwargs)
+            # print(args, kwargs)
             parser.add_argument(*args, **kwargs)
 
     args = parser.parse_args()
