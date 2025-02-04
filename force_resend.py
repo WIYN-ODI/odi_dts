@@ -65,6 +65,7 @@ if __name__ == "__main__":
     reason = args.reason
     if (reason is None):
         reason = ""
+    reason += " // by force_resend"
 
     # Add re-send commands for each exposure
     for result in results:
