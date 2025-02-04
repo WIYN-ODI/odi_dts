@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # get EXPID for list of files
     q = ' OR '.join(["EXPOSURE LIKE '%%%s%%'" % (obsid) for obsid in obsids])
     sql = "SELECT EXPOSURE, ID FROM EXPOSURES WHERE %s" % (q)
-    print(sql)
+    # print(sql)
 
     # execute SQL query
     db.lock.acquire()
@@ -71,7 +71,7 @@ if __name__ == "__main__":
     # Add re-send commands for each exposure
     for result in results:
         obsid, exposure_id = result
-        print("%s ==> %s" % (obsid, exposure_id))
+        print("Adding resend instruction to database :: %s ==> %s" % (obsid, exposure_id))
 
         db.request_exposure_resend(obsid=obsid, reason=reason, exposure_id=exposure_id, dryrun=dryrun)
 
