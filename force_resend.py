@@ -43,13 +43,15 @@ if __name__ == "__main__":
 
     print("Adding resend requests for %s" % ("\n ** ".join(['']+obsids)))
 
-    db = ODIDB()
+    # db = ODIDB()
 
 
-    #
-    # # get EXPID for
-    #     sql = args.sql
-    #
+
+    # get EXPID for list of files
+    q = ' OR '.join(["EXPOSURE LIKE '%%%s%%'" % (obsid) for obsid in obsids])
+    sql = "SELECT ID FROM EXPOSURES WHERE %s" % (q)
+    print(sql)
+
     #     db.lock.acquire()
     #     db.cursor.execute(sql)
     #     results = db.cursor.fetchall()
