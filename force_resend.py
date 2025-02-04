@@ -13,7 +13,7 @@ import commandline
 if __name__ == "__main__":
 
     args = commandline.parse()
-    print(args.input_dir)
+    print(args.inputdir)
 
     db = ODIDB()
 
