@@ -364,7 +364,7 @@ group by expid) where attempts > completed)
         # print(results)
         return results[0][0]
 
-    def request_exposure_resend(self, obsid, timestamp=None, reason=None, dryrun=False):
+    def request_exposure_resend(self, obsid, timestamp=None, reason=None, dryrun=False, exposure_id=None):
 
         if (timestamp is None):
             timestamp = datetime.datetime.now()
@@ -375,7 +375,8 @@ group by expid) where attempts > completed)
             event = "ppa request resend (%s: %s)" % (obsid, reason)
 
         # get exposure-id from OBS-ID
-        exposure_id = self.exposureid_from_obsid(obsid)
+        if (exposure_id is None):
+            exposure_id = self.exposureid_from_obsid(obsid)
         if (exposure_id is None):
             # TODO: report error back to PPA
             self.logger.critical("Unable to get exposure ID from OBSID %s" % (obsid))
