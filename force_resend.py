@@ -17,14 +17,14 @@ if __name__ == "__main__":
         ]
 
     args = commandline.parse(special_options)
-    print(args.inputdir)
+    # print(args.inputdir)
 
     # get OBSIDs for all input files
     obsids = []
     for fn in args.inputdir:
         if (os.path.isdir(fn)):
             dirlist = glob.glob(fn + "/*.fits")
-            print("Input was directory, checking files: %s" % (", ".join(dirlist)))
+            # print("Input was directory, checking files: %s" % (", ".join(dirlist)))
             for _fn in dirlist:
                 hdulist = pyfits.open(_fn)
                 try:
@@ -38,6 +38,7 @@ if __name__ == "__main__":
             try:
                 hdulist = pyfits.open(fn)
                 obsid = hdulist[0].header['OBSID']
+                print("Found OBSID %s in %s" % (obsid, _fn))
                 obsids.append(obsid)
                 break
             except:
