@@ -7,7 +7,7 @@ import glob
 import astropy.io.fits as pyfits
 
 from query_db import ODIDB
-
+import commandline
 
 
 if __name__ == "__main__":
