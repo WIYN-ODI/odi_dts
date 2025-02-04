@@ -395,6 +395,7 @@ group by expid) where attempts > completed)
             self.connection.commit()
         else:
             self.logger.info("DRYRUN: %s" % (sql))
+            print("DRYRUN ONLY: %s" % (sql))
 
 
     def close(self):
