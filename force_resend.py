@@ -16,7 +16,28 @@ if __name__ == "__main__":
         (['--reason'], dict(dest='reason', type=str, help="reason for resend", default=""))
         ]
 
-    args = commandline.parse(special_options)
+    args = commandline.parse(special_options, 
+                             epilog="""\
+
+  ***********************
+  **
+  ** Tool to re-send files over to PPA
+  ** Input can be either a list of FITS files, or a list of directories.
+  **  
+  ***********************
+
+  Method -- what happens under the hood:
+  1a) If input is a FILE, derive OBSID from the specified file
+  1b) If input is a DIRECTORY, scan for FITS files in that directory,
+      and from these FITS files obtain an OBSID identifier
+  2)  Query the WIYN internal database to translate OBSID to exposure ID
+  3)  Add an entry to the database marking a given exposure ID for resend
+  
+  The actual data transfer is then done via the regular odi_dts tool. 
+
+
+""")
+
     # print(args.inputdir)
 
     # get OBSIDs for all input files
@@ -54,7 +75,7 @@ if __name__ == "__main__":
     # get EXPID for list of files
     q = ' OR '.join(["EXPOSURE LIKE '%%%s%%'" % (obsid) for obsid in obsids])
     sql = "SELECT EXPOSURE, ID FROM EXPOSURES WHERE %s" % (q)
-    # print(sql)
+    print(sql)
 
     # execute SQL query
     db.lock.acquire()

@@ -2,9 +2,12 @@
 
 import argparse
 
-def parse(list_of_extras=None):
+def parse(list_of_extras=None, epilog=None):
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        epilog=epilog,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+        )
 
     parser.add_argument(
         "inputdir", nargs='*',
